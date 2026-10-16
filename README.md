@@ -11,7 +11,7 @@ Voir [`LICENSE`](LICENSE) et [`CREDITS.md`](CREDITS.md).
 
 Les fichiers `.glb` ne sont pas versionnés dans git : ils sont attachés aux
 [Releases](https://github.com/AnatomoOrg/anatomo-models/releases) (`v<VERSION>`), avec leurs
-manifestes, une somme SHA-256 et les textes de licence.
+manifestes, leurs repères anatomiques, une somme SHA-256 et les textes de licence.
 
 | Modèle | Contenu | Maillages (draw calls) |
 |---|---|---|
@@ -66,6 +66,7 @@ sources, les vérifie (cohérence glb ↔ manifeste, validateur glTF Khronos) et
   4.0 est du mauvais côté et la 3.0 ne l'a pas).
 - Les **noms français** (`data/fr_names.json`) ne couvrent que le membre supérieur et restent à
   relire ; les autres structures ont `fr: null`.
-- Les **repères osseux** de l'humérus sont placés géométriquement, pas par un anatomiste.
+- Les **repères anatomiques** (osseux, attaches musculaires, pouls, repères cliniques ; voir
+  [`docs/FORMAT.md`](docs/FORMAT.md#repères-anatomiques)) sont placés géométriquement, pas par un anatomiste.
 - Dans `full_body`, le classement par système vient de l'arbre is-a FMA, avec les noms anglais
   en secours : quelques structures peuvent être mal rangées (notamment dans `organes`).

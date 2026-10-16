@@ -12,7 +12,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import full_body  # noqa: E402
 import upper_limb  # noqa: E402
+from anatomo_models import landmarks  # noqa: E402
 from anatomo_models.bp3d import BP3D  # noqa: E402
+from anatomo_models.landmark_catalog import CATALOGUE  # noqa: E402
 from anatomo_models.model import build  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -33,26 +35,36 @@ def main():
     version = open(os.path.join(ROOT, "VERSION")).read().strip()
     fr = json.load(open(os.path.join(ROOT, "data", "fr_names.json"), encoding="utf-8"))
     bp = BP3D(a.src)
-    if a.only in (None, "upper_limb"):
-        items, marks = upper_limb.structures(bp, fr)
-        m = build(items, os.path.join(a.out, "upper_limb.glb"), os.path.join(a.out, "upper_limb.json"),
-                  "upper_limb", version, SOURCES)
-        with open(os.path.join(a.out, "upper_limb.landmarks.json"), "w", encoding="utf-8") as f:
-            json.dump({"format": m["format"], "version": version, "frame": m["frame"], "license": m["license"],
-                       "attribution": m["attribution"], "landmarks": marks},
-                      f, ensure_ascii=False, indent=1)
-            f.write("\n")
-        report(m)
-    if a.only in (None, "full_body"):
-        items = full_body.structures(bp, fr)
-        report(build(items, os.path.join(a.out, "full_body.glb"), os.path.join(a.out, "full_body.json"),
-                     "full_body", version, SOURCES[:1]))
+    names = set()
+    for model, structures in (("upper_limb", lambda: upper_limb.structures(bp, fr)),
+                              ("full_body", lambda: full_body.structures(bp, fr))):
+        if a.only not in (None, model):
+            continue
+        items = structures()
+        names |= {x["en"] for x in items}
+        m = build(items, os.path.join(a.out, f"{model}.glb"), os.path.join(a.out, f"{model}.json"), model, version,
+                  SOURCES if model == "upper_limb" else SOURCES[:1])
+        marks, failed = landmarks.place(items, CATALOGUE)
+        if failed:
+            raise SystemExit(f"{model}: landmarks without a position: {failed}")
+        write_landmarks(m, marks, os.path.join(a.out, f"{model}.landmarks.json"))
+        report(m, marks)
+    if a.only is None and (missing := landmarks.unresolved(names, CATALOGUE)):
+        raise SystemExit(f"catalogue structures found in no model (misspelt?): {missing}")
 
 
-def report(m):
+def write_landmarks(m, marks, path):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"format": m["format"], "model": m["model"], "version": m["version"], "frame": m["frame"],
+                   "license": m["license"], "attribution": m["attribution"], "landmarks": marks},
+                  f, ensure_ascii=False, indent=1)
+        f.write("\n")
+
+
+def report(m, marks):
     tris = sum(s["triangles"] for s in m["systems"])
-    print(f"{m['model']}: {len(m['structures'])} structures, {tris} triangles, {len(m['systems'])} meshes",
-          {s["key"]: s["structures"] for s in m["systems"]})
+    print(f"{m['model']}: {len(m['structures'])} structures, {tris} triangles, {len(m['systems'])} meshes, "
+          f"{len(marks)} landmarks", {s["key"]: s["structures"] for s in m["systems"]})
 
 
 if __name__ == "__main__":

@@ -6,15 +6,13 @@ specific selected concept. Meshes come from BodyParts3D 3.0 "obj_95" when it has
 (vessels), keeping only the files on the right side.
 Known gaps: BodyParts3D has no upper-limb nerves; latissimus dorsi and trapezius are missing.
 """
-import collections
 import re
 
-import numpy as np
 import trimesh
 
-from anatomo_models import landmarks
-from anatomo_models.model import clean, decimate, to_gltf
+from anatomo_models.model import clean, decimate
 
+HUMERUS = "FMA23130"
 KEEP, MIN_TRIS = 0.2, 3000  # ~470k triangles in total; small parts keep their full resolution
 
 MUSCLES = (r"deltoid|biceps brachii|triceps brachii|brachialis|coracobrachialis|brachioradialis|anconeus|supinator|"
@@ -67,7 +65,7 @@ def structures(bp, fr_names):
                 continue
             seen.add(f)
             groups.setdefault(names[c], dict(id=c, system=sel[c], files=[], owned=owned[c]))["files"].append(f)
-    out, marks = [], []
+    out = []
     for name, g in sorted(groups.items()):
         # The 3.0 mesh covers the whole concept: use it only when no other group took part of the concept's
         # files (e.g. recurrent branches of the ulnar artery), or that geometry would be drawn twice.
@@ -79,15 +77,12 @@ def structures(bp, fr_names):
             if not parts:
                 continue
             m, source = trimesh.util.concatenate(parts), "bodyparts3d-4.0"
-        m = clean(m)
-        m = decimate(m, max(MIN_TRIS, len(m.faces) * KEEP))
-        out.append(dict(id=g["id"], en=name, fr=fr_names.get(g["id"]), system=g["system"], mesh=m, source=source))
-        if g["id"] == landmarks.HUMERUS:
-            for slug, fr, kind, p in landmarks.humerus(m.vertices * 0.001, m.vertex_normals):
-                marks.append(dict(id=f"humerus.{slug}", structure=g["id"], fr=fr, kind=kind,
-                                  position=np.round(to_gltf(p * 1000), 5).tolist()))
+        src = clean(m)
+        m = decimate(src, max(MIN_TRIS, len(src.faces) * KEEP))
+        # `src` (full resolution) is only used to place the landmarks.
+        out.append(dict(id=g["id"], en=name, fr=fr_names.get(g["id"]), system=g["system"], mesh=m, src=src, source=source))
     # A missing or misnamed 3.0 archive would otherwise silently publish a ~5x coarser model.
     v3 = sum(x["source"] == "bodyparts3d-3.0" for x in out)
-    if not any(x["id"] == landmarks.HUMERUS and x["source"] == "bodyparts3d-3.0" for x in out) or v3 < len(out) // 2:
+    if not any(x["id"] == HUMERUS and x["source"] == "bodyparts3d-3.0" for x in out) or v3 < len(out) // 2:
         raise SystemExit(f"BodyParts3D 3.0 meshes missing: only {v3}/{len(out)} structures from 3.0 ({bp.v3})")
-    return out, marks
+    return out

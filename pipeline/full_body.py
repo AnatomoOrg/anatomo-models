@@ -71,6 +71,7 @@ def structures(bp, fr_names, target=TARGET):
         # The concept first, then the other owners of its files (some concepts only sit in the part-of tree).
         concepts = [key] + sorted({c for f in groups[key] for c in bp.owners.get(f, [])} - {key})
         name = bp.names.get(key, key)
+        # `src` (full resolution) is only used to place the landmarks.
         out.append(dict(id=key, en=name, fr=fr_names.get(key), system=system(bp, concepts, name),
-                        mesh=decimate(m, max(MIN_TRIS, len(m.faces) * keep)), source="bodyparts3d-4.0"))
+                        mesh=decimate(m, max(MIN_TRIS, len(m.faces) * keep)), src=m, source="bodyparts3d-4.0"))
     return out

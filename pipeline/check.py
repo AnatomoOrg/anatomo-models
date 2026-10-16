@@ -4,12 +4,14 @@ Usage: python3 pipeline/check.py OUT_DIR/upper_limb.json [...]
 """
 import json
 import os
+import re
 import sys
 
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from anatomo_models.glb import read_glb  # noqa: E402
+from anatomo_models.landmarks import KINDS  # noqa: E402
 
 
 def check(manifest_path):
@@ -39,8 +41,34 @@ def check(manifest_path):
         assert v_end == sys_["vertices"] and t_end == sys_["triangles"]
     tris = sum(s["triangles"] for s in m["systems"])
     missing_fr = sum(s["fr"] is None for s in m["structures"])
+    marks = check_landmarks(m, manifest_path.removesuffix(".json") + ".landmarks.json")
     print(f"{manifest_path}: OK ({len(m['structures'])} structures, {tris} triangles, "
-          f"{len(nodes)} meshes, {missing_fr} without French name)")
+          f"{len(nodes)} meshes, {missing_fr} without French name, {marks} landmarks)")
+
+
+def check_landmarks(m, path):
+    """Landmarks reference structures of the model, are unique per (id, side) and lie on their structure."""
+    if not os.path.exists(path):
+        return 0
+    lm = json.load(open(path, encoding="utf-8"))
+    assert lm["format"] == m["format"] and lm["version"] == m["version"] and lm["attribution"] == m["attribution"]
+    by_id = {s["id"]: s for s in m["structures"]}
+    keys = set()
+    for x in lm["landmarks"]:
+        key = (x["id"], x["side"])
+        assert key not in keys, key
+        keys.add(key)
+        assert x["kind"] in KINDS and x["side"] in (None, "right", "left") and x["fr"].strip(), key
+        s = by_id[x["structure"]]
+        lo, hi = np.array(s["bbox"]) + [[-0.005], [0.005]]
+        assert np.all(x["position"] >= lo) and np.all(x["position"] <= hi), key
+        # A sided structure carries its side; on a midline structure, the subject's right is at negative x.
+        named = next((w for w in ("right", "left") if re.search(rf"\b{w}\b", s["en"])), None)
+        if named:
+            assert x["side"] == named, key
+        elif x["side"]:
+            assert (x["position"][0] < 0.002) if x["side"] == "right" else (x["position"][0] > -0.002), key
+    return len(lm["landmarks"])
 
 
 if __name__ == "__main__":

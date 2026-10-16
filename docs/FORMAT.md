@@ -1,13 +1,13 @@
 # Format des modèles (`anatomo-models/1`)
 
-Chaque modèle publié est une paire de fichiers : un `.glb` (glTF 2.0 binaire) et un manifeste `.json`
-du même nom. Le membre supérieur a en plus un fichier de repères osseux.
+Chaque modèle publié est un trio de fichiers : un `.glb` (glTF 2.0 binaire), un manifeste `.json` du même
+nom et ses repères anatomiques `.landmarks.json`.
 
 | Fichier | Contenu |
 |---|---|
 | `upper_limb.glb` / `.json` | Membre supérieur droit (MVP) : os, muscles, artères, veines |
-| `upper_limb.landmarks.json` | Repères osseux de l'humérus |
 | `full_body.glb` / `.json` | Corps entier (contexte), tous systèmes |
+| `<modèle>.landmarks.json` | Repères anatomiques : osseux, attaches musculaires, pouls, repères cliniques |
 
 ## Repère
 
@@ -73,22 +73,57 @@ contient `format`, `model`, `version` et `license` (`{id, url}`).
 que `id` (FMA ID). Dans `full_body`, quelques structures sans concept FMA gardent l'identifiant
 de leur fichier élément BodyParts3D (`FJ…`).
 
-## Repères osseux
+## Repères anatomiques
 
 ```jsonc
 {
-  "format": "anatomo-models/1", "version": "1.0.0", "frame": { … },
+  "format": "anatomo-models/1", "model": "full_body", "version": "1.1.0", "frame": { … },
   "license": { … }, "attribution": "…",
   "landmarks": [
-    {"id": "humerus.tete", "structure": "FMA23130", "fr": "Tête de l'humérus",
-     "kind": "articulaire", "position": [-0.17, 1.30, -0.01]}
+    {"id": "humerus.tete", "structure": "FMA23130", "side": "right", "fr": "Tête de l'humérus",
+     "kind": "articulaire", "position": [-0.17, 1.30, -0.01]},
+    {"id": "biceps-brachial-long.origine", "structure": "FMA37686", "side": "right",
+     "fr": "Tubercule supraglénoïdal", "kind": "origine", "position": [ … ]},
+    {"id": "manubrium.incisure-jugulaire", "structure": "FMA7486", "side": null, … }
   ]
 }
 ```
 
-`kind` vaut `saillie`, `articulaire`, `depression` ou `repere`. Les identifiants `humerus.<slug>`
-sont stables. Les positions sont calculées géométriquement (sommet extrême dans une direction
-anatomique) et décalées de 1,5 mm vers l'extérieur ; elles restent à faire valider.
+- `id` (`<structure>.<repère>`, ASCII) est stable d'une version à l'autre et **ne porte pas le côté** : les fiches
+  et les quiz s'y réfèrent. Un repère d'une structure paire existe une fois par côté : la clé unique d'un repère
+  dans un fichier est le couple (`id`, `side`).
+- `structure` est le FMA ID de la structure qui porte le repère (celle du côté du repère).
+- `side` vaut `right`, `left`, ou `null` pour un repère médian (incisure jugulaire, processus épineux…). Une
+  structure médiane peut porter des repères pairs (processus transverses, incisures claviculaires du manubrium) :
+  `side` est alors renseigné et le côté droit est en X négatif.
+- `kind` :
+
+  | `kind` | Porté par | Sens |
+  |---|---|---|
+  | `saillie` | os | Processus, tubercule, épine, épicondyle… |
+  | `articulaire` | os | Surface articulaire (tête, condyle, cavité) |
+  | `depression` | os | Fosse, sillon, incisure |
+  | `repere` | os | Autre repère (col, bord, repère de niveau ou de nerf) |
+  | `origine` | muscle | Attache d'origine ; `fr` nomme le site osseux |
+  | `insertion` | muscle | Attache terminale ; `fr` nomme le site osseux |
+  | `pouls` | artère | Point de prise du pouls |
+  | `clinique` | vaisseau, organe | Voie d'abord, ponction, point clinique (McBurney…) |
+
+- `position` est sur la surface publiée de la structure, décalée de 1,5 mm vers l'extérieur, dans le repère du
+  modèle.
+
+Les positions sont **calculées géométriquement**, pas placées par un anatomiste : point extrême dans une direction
+anatomique, fond d'une fosse, centre d'une surface, partie d'un muscle au contact de son os, point d'une artère le
+plus proche d'un os ou d'un autre repère. Les règles, structure par structure, sont dans
+`pipeline/anatomo_models/landmark_catalog.py` ; elles tournent sur les maillages pleine résolution, puis le point est
+ramené sur la surface publiée. Toutes les positions restent à faire valider. Une attache dont le muscle n'atteint
+pas l'os dans le modèle (chef qui se termine sur un tendon commun) est omise ; si l'os manque au modèle (pas de côtes
+ni de sternum dans `upper_limb`), le repère est placé à l'extrémité correspondante du muscle.
+
+BodyParts3D n'a pas les nerfs périphériques : les repères liés aux nerfs sont portés par les os (sillon du nerf
+ulnaire, col de la fibula).
+
+Jusqu'à la v1.0.0, seul `upper_limb` avait des repères (12, sur l'humérus) et ils n'avaient pas de `side`.
 
 ## Utilisation côté app (three.js)
 
