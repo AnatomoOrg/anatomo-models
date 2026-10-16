@@ -41,25 +41,39 @@ Changer `VERSION` sur `main`. Le workflow `Release models` reconstruit les modè
 sources, les vérifie (cohérence glb ↔ manifeste, validateur glTF Khronos) et crée la release
 `v<VERSION>`. Une release existante n'est jamais écrasée.
 
-### Si le fichier Open3DModel change en amont
+### Source Open3DModel : miroir et changement en amont
 
-`upper-limb-obj.zip` est épinglé par sa somme SHA-256 (`pipeline/open3d.sha256`) ; AnatomyTOOL le met
-parfois à jour (dernière version datée du 14/10/2026). Si `fetch_open3d.sh` signale une somme
-différente, le build s'arrête : rien n'est publié avec un fichier non relu. Pour adopter la nouvelle
-version :
+L'URL d'AnatomyTOOL n'est pas versionnée : le fichier `upper-limb-obj.zip` y est remplacé sur place
+(dernière version datée du 14/10/2026). Il est épinglé par sa somme SHA-256 (`pipeline/open3d.sha256`),
+et chaque release publie, tel quel, le zip qui a servi au build (asset `upper-limb-obj.zip`, avec sa
+somme dans `SHA256SUMS`). `pipeline/fetch_open3d.sh` essaie dans l'ordre, sans jeton :
+
+1. `$OPEN3D_MIRROR/upper-limb-obj.zip` si la variable est définie, par exemple
+   `OPEN3D_MIRROR=https://github.com/AnatomoOrg/anatomo-models/releases/download/v1.3.0` pour
+   reconstruire exactement une release ;
+2. l'asset de la dernière release du dépôt (`releases/latest/download/upper-limb-obj.zip`) ;
+3. l'URL amont.
+
+Un fichier dont la somme diffère de la somme épinglée est écarté, quelle que soit sa provenance. La
+première release qui publie le miroir (1.3.0) se construit depuis l'URL amont.
+
+Si aucune source n'a la somme épinglée (fichier modifié en amont alors que l'ancienne version n'est
+plus servie, ou nouvelle version à adopter), le build s'arrête : rien n'est publié avec un fichier non
+relu. Pour adopter la nouvelle version :
 
 1. Relire la licence et le crédit demandés sur <https://anatomytool.org/node/63906> et
    <https://anatomytool.org/node/63903> (toujours CC BY-SA 4.0, export OBJ sans texture) ; reporter un
    changement de crédit dans `pipeline/anatomo_models/open3d.py` (`CREDIT`) et `CREDITS.md`.
-2. Télécharger le zip, vérifier qu'il ne contient que des `.obj` (`unzip -l`), calculer sa somme
-   (`sha256sum`) et la mettre dans `pipeline/open3d.sha256`.
+2. Télécharger le zip amont, vérifier qu'il ne contient que des `.obj` (`unzip -l`), calculer sa somme
+   (`sha256sum`) et la mettre dans `pipeline/open3d.sha256`. Le miroir de la dernière release, qui a
+   l'ancienne somme, sera alors écarté et l'URL amont utilisée.
 3. `pipeline/fetch_open3d.sh bp3d/open3d && python pipeline/build.py bp3d build --only upper_limb` :
    le build échoue si un objet de `NERVES` ou un os de `BONES` a disparu ou a été renommé (adapter la
    table), ou si le recalage dépasse 4 mm RMS. Contrôler le journal du recalage et le nombre de nerfs.
 4. `python pipeline/check.py …`, `python -m pytest -q tests`, puis mettre à jour la date du fichier
-   dans `CREDITS.md`.
+   dans `CREDITS.md`. La release suivante publiera le nouveau zip comme miroir.
 
-Aucune copie binaire n'est gardée dans git ; une release déjà publiée contient les modèles construits.
+Aucune copie binaire n'est gardée dans git.
 
 ## Sources et choix du pipeline
 
@@ -107,8 +121,10 @@ Aucune copie binaire n'est gardée dans git ; une release déjà publiée contie
   intercostobrachial manquent (absents de la source). Points anatomiques incertains : voir
   [`docs/NOMS.md`](docs/NOMS.md#nerfs-du-membre-supérieur-open3dmodel).
 - Le grand dorsal et le chef profond du court fléchisseur du pouce (dont le fichier 4.0 est du mauvais
-  côté) viennent de la 3.0 seule, recalés par le champ de déplacement : leur position est moins sûre
-  que celle des autres structures du membre supérieur.
+  côté) viennent de la 3.0 seule, recalés par le champ de déplacement, comme les trois parties du
+  trapèze (qui atteignent le rachis et l'occiput, où la translation constante du bras est fausse de
+  plusieurs millimètres) : leur position est moins sûre que celle des autres structures du membre
+  supérieur, recalées par la translation constante.
 - **Peau** (`full_body`) : le maillage BodyParts3D est une coque fermée d'environ 2 mm d'épaisseur
   (surfaces externe et interne raccordées aux orifices). Les fentes palpébrales sont ouvertes, comme sur
   un sujet aux yeux ouverts : la cornée est visible entre les paupières, ce n'est pas un trou. Quelques
@@ -119,7 +135,7 @@ Aucune copie binaire n'est gardée dans git ; une release déjà publiée contie
   pubiens, qui formaient une couche rose par-dessus la peau, sont maintenant dans le système `peau`. La
   peau n'est pas gonflée au build : la décaler le long de ses normales déplacerait aussi sa surface
   interne et rétrécirait les orifices (paupières, narines, lèvres).
-- Les **noms français** (`data/fr_names.json`) couvrent toutes les structures sauf la peau. Ils
+- Les **noms français** (`data/fr_names.json`) couvrent toutes les structures. Ils
   ont été traduits puis relus par des agents, sans relecture humaine, et ne portent pas le côté
   (sauf quand il fait partie du nom). Conventions et points incertains :
   [`docs/NOMS.md`](docs/NOMS.md).

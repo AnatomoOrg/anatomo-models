@@ -33,7 +33,8 @@ LICENSE = {"id": "CC-BY-SA-4.0", "url": "https://creativecommons.org/licenses/by
 CREDIT = ('"Open3DModel - Upper limb - English labels" at AnatomyTOOL.org by Open3D project, Jan Kooloos, '
           'RadboudUMC, Eungyeol Lee, LUMC et al, license: Creative Commons Attribution-ShareAlike')
 ATTRIBUTION = (BP3D_ATTRIBUTION.removesuffix(" Modified by the Anatomo project.")
-               + f" Nerves: {CREDIT} (https://creativecommons.org/licenses/by-sa/4.0/)."
+               + f" Nerves: {CREDIT} (https://creativecommons.org/licenses/by-sa/4.0/),"
+               " derived from BodyParts3D and Z-Anatomy."
                + " Modified by the Anatomo project; this model is licensed under CC BY-SA 4.0"
                " (https://creativecommons.org/licenses/by-sa/4.0/).")
 KEEP, MIN_TRIS = 0.5, 300  # nerves are thin tubes: decimate less than muscles

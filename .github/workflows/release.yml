@@ -61,7 +61,10 @@ jobs:
           python pipeline/check.py build/upper_limb.json build/full_body.json | tee build/check.txt
           node pipeline/validate_gltf.js build/upper_limb.glb build/full_body.glb
           cp LICENSE CREDITS.md LICENSES/CC-BY-SA-2.1-JP.txt LICENSES/CC-BY-SA-4.0.txt build/
-          (cd build && sha256sum *.glb *.json > SHA256SUMS)
+          # Mirror of the pinned Open3DModel source (its upstream URL is not versioned), published with the release:
+          # pipeline/fetch_open3d.sh tries it before the upstream URL.
+          cp bp3d/open3d/upper-limb-obj.zip build/
+          (cd build && sha256sum *.glb *.json upper-limb-obj.zip > SHA256SUMS)
       - if: steps.v.outputs.exists != 'true'
         uses: actions/upload-artifact@v4
         with:
@@ -93,6 +96,7 @@ jobs:
             echo "BodyParts3D, © The Database Center for Life Science, licensed under CC Attribution-Share Alike 2.1 Japan (https://creativecommons.org/licenses/by-sa/2.1/jp/)."
             echo "Nerfs du membre supérieur : \"Open3DModel - Upper limb - English labels\" at AnatomyTOOL.org by Open3D project, Jan Kooloos, RadboudUMC, Eungyeol Lee, LUMC et al, license: Creative Commons Attribution-ShareAlike (https://creativecommons.org/licenses/by-sa/4.0/)."
             echo "upper_limb : CC BY-SA 4.0 ; full_body : CC BY-SA 2.1 JP. Voir LICENSE et CREDITS.md."
+            echo "upper-limb-obj.zip : copie non modifiée de la source Open3DModel (export OBJ, géométrie seule, CC BY-SA 4.0), épinglée par pipeline/open3d.sha256."
             echo
             echo '```'
             cat build/check.txt
@@ -101,4 +105,4 @@ jobs:
           cd build
           gh release create "$TAG" -R "$REPO" --target "$GITHUB_SHA" --title "Modèles $TAG" --notes-file ../notes.md \
             upper_limb.glb upper_limb.json upper_limb.landmarks.json full_body.glb full_body.json full_body.landmarks.json \
-            SHA256SUMS LICENSE CREDITS.md CC-BY-SA-2.1-JP.txt CC-BY-SA-4.0.txt
+            SHA256SUMS LICENSE CREDITS.md CC-BY-SA-2.1-JP.txt CC-BY-SA-4.0.txt upper-limb-obj.zip

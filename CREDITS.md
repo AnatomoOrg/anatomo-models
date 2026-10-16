@@ -13,7 +13,7 @@ Source : <https://dbarchive.biosciencedbc.jp/en/bodyparts3d/>
 | Version | Fichiers | Utilisés pour |
 |---|---|---|
 | 4.0 (2013) | `isa_BP3D_4.0_obj_99`, `partof_BP3D_4.0_obj_99`, listes de parties et arbres is-a / part-of | Corps entier ; vaisseaux du membre supérieur ; noms et arbres FMA |
-| 3.0 (2011-09-15) | `BodyParts3D_3.0_obj_95` | Os et muscles du membre supérieur (maillages plus denses) |
+| 3.0 (2011-09-15) | `BodyParts3D_3.0_obj_95`, `20110915/parts_list_e.txt`, `20110915/composite_parts.txt` | Os et muscles du membre supérieur (maillages plus denses) ; 77 structures de `full_body` absentes de la 4.0 (muscles surtout) ; noms et composition des concepts 3.0 |
 
 Les identifiants et les noms anglais des structures (`FMA…`) viennent de la
 **Foundational Model of Anatomy** (Structural Informatics Group, University of Washington,
@@ -50,11 +50,15 @@ Faites par le projet Anatomo avec le code de `pipeline/` :
 
 - sélection des structures (membre supérieur droit pour `upper_limb`, tout le corps pour `full_body`) ;
 - regroupement des fichiers éléments par concept FMA ;
-- recalage des maillages 3.0 dans le repère 4.0 (translation constante) ;
+- recalage des maillages 3.0 dans le repère 4.0 : translation constante pour les os et muscles du
+  membre supérieur, champ de déplacement mesuré sur les structures communes aux deux versions pour
+  les structures propres à la 3.0 (`pipeline/anatomo_models/v3.py`) ;
 - correction des paires droite/gauche placées du mauvais côté dans la source 4.0 (corps entier) ;
 - fusion des sommets dupliqués, décimation ;
 - changement de repère et d'unité (mm → m, axe vertical en +Y) ;
 - fusion des maillages par système anatomique, avec un indice de structure par sommet ;
+- reclassement explicite du système de quelques structures (disques intervertébraux, cartilages,
+  tendons, ligaments, poils…), table `pipeline/anatomo_models/overrides.py` ;
 - ajout de noms français (`data/fr_names.json`) et de repères osseux calculés (humérus) ;
 - nerfs de l'Open3DModel (`upper_limb`) : recalage sur les os BodyParts3D par une similitude
   (rotation, translation, échelle uniforme d'environ 0,97), changement d'unité, regroupement des
