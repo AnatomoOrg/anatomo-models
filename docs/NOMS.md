@@ -65,6 +65,7 @@ retenu, pour ne pas changer les identifiants ; **le nom français décrit ce que
 | FMA7365, FMA7386 | right medial basal / left posterior bronchopulmonary segment | segmental veins | Veine segmentaire basale médiale / postérieure |
 | FMA86056 | myocardial zone 4 | posterior leaflet of mitral valve | Cuspide postérieure de la valve mitrale |
 | FMA86064 | myocardial zone 12 | anterolateral head of lateral papillary muscle of left ventricle | Muscle papillaire antérieur du ventricule gauche |
+| FMA85123, FMA85124 | fourth common palmar digital artery (on n'en décrit classiquement que trois) | medial proper palmar digital artery of little finger : le maillage longe le bord ulnaire du petit doigt jusqu'à la pulpe | Artère digitale palmaire propre médiale du petit doigt |
 
 Le format n'a pas de champ de synonymes : les anciens noms courants sont indiqués entre parenthèses
 dans ce tableau seulement (muscle de la luette pour le muscle de l'uvule).
@@ -87,7 +88,6 @@ Les noms sources qui semblent erronés sont traduits tels quels.
 
 | Nom anglais | Nom français | Doute |
 | --- | --- | --- |
-| fourth common palmar digital artery | 4e artère digitale palmaire commune | On en décrit classiquement trois |
 | side of bony pelvis | Os coxal | Interprétation du nom FMA |
 | cusps of aortic valve | Valvules antérieure (coronaire droite), postérieure gauche (coronaire gauche), postérieure droite (non coronaire) | Ancienne nomenclature anglaise, rapportée à la TA entre parenthèses |
 | cusps of pulmonary valve | Valvules antérieure droite, antérieure gauche, postérieure | Positions de la source gardées ; correspondance avec la TA (antérieure, droite, gauche) non établie |

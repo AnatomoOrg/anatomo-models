@@ -227,6 +227,8 @@ def test_fr_names_audit():
     assert fr["FMA25058"] == "Disque intervertébral C2-C3"  # 'intervertebral disk of axis': below the axis
     assert fr["FMA54397"] == "Gencive supérieure"  # 'upper jaw': its mesh is the gingiva
     assert fr["FMA53637"] == "Os zygomatique"  # 'right cheek': its mesh is the zygomatic bone
+    # 'fourth common palmar digital artery': its mesh runs to the pulp of the little finger
+    assert fr["FMA85123"] == fr["FMA85124"] == "Artère digitale palmaire propre médiale du petit doigt"
     assert not any("Mâchoire" in v or "Triquetrum" in v for v in fr.values())
 
 
