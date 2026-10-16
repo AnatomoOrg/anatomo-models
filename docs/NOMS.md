@@ -65,6 +65,7 @@ retenu, pour ne pas changer les identifiants ; **le nom français décrit ce que
 | FMA7365, FMA7386 | right medial basal / left posterior bronchopulmonary segment | segmental veins | Veine segmentaire basale médiale / postérieure |
 | FMA86056 | myocardial zone 4 | posterior leaflet of mitral valve | Cuspide postérieure de la valve mitrale |
 | FMA86064 | myocardial zone 12 | anterolateral head of lateral papillary muscle of left ventricle | Muscle papillaire antérieur du ventricule gauche |
+| FMA85123, FMA85124 | fourth common palmar digital artery (on n'en décrit classiquement que trois) | medial proper palmar digital artery of little finger : le maillage longe le bord ulnaire du petit doigt jusqu'à la pulpe | Artère digitale palmaire propre médiale du petit doigt |
 
 Le format n'a pas de champ de synonymes : les anciens noms courants sont indiqués entre parenthèses
 dans ce tableau seulement (muscle de la luette pour le muscle de l'uvule).
@@ -80,12 +81,6 @@ dans ce tableau seulement (muscle de la luette pour le muscle de l'uvule).
   `full_body`, `FMA13398` (`right serratus anterior`, maillage 3.0) dans `upper_limb`. Une app qui relie
   les deux modèles ne peut donc pas se fier au seul FMA ID pour cette structure ; le gauche est
   `FMA13399` dans `full_body`.
-
-## Noms corrigés d'après la géométrie
-
-| Nom anglais | Nom français | Raison |
-| --- | --- | --- |
-| fourth common palmar digital artery | Artère digitale palmaire propre médiale du petit doigt | Le maillage longe le bord ulnaire du petit doigt jusqu'à la pulpe : c'est l'artère digitale propre de ce bord, branche directe de l'arcade palmaire superficielle. On ne décrit classiquement que trois artères digitales palmaires communes. |
 
 ## Points incertains
 
