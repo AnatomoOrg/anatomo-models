@@ -81,13 +81,18 @@ dans ce tableau seulement (muscle de la luette pour le muscle de l'uvule).
   les deux modèles ne peut donc pas se fier au seul FMA ID pour cette structure ; le gauche est
   `FMA13399` dans `full_body`.
 
+## Noms corrigés d'après la géométrie
+
+| Nom anglais | Nom français | Raison |
+| --- | --- | --- |
+| fourth common palmar digital artery | Artère digitale palmaire propre médiale du petit doigt | Le maillage longe le bord ulnaire du petit doigt jusqu'à la pulpe : c'est l'artère digitale propre de ce bord, branche directe de l'arcade palmaire superficielle. On ne décrit classiquement que trois artères digitales palmaires communes. |
+
 ## Points incertains
 
 Les noms sources qui semblent erronés sont traduits tels quels.
 
 | Nom anglais | Nom français | Doute |
 | --- | --- | --- |
-| fourth common palmar digital artery | 4e artère digitale palmaire commune | On en décrit classiquement trois |
 | side of bony pelvis | Os coxal | Interprétation du nom FMA |
 | cusps of aortic valve | Valvules antérieure (coronaire droite), postérieure gauche (coronaire gauche), postérieure droite (non coronaire) | Ancienne nomenclature anglaise, rapportée à la TA entre parenthèses |
 | cusps of pulmonary valve | Valvules antérieure droite, antérieure gauche, postérieure | Positions de la source gardées ; correspondance avec la TA (antérieure, droite, gauche) non établie |
