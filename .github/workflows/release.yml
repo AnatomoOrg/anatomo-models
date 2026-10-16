@@ -98,5 +98,5 @@ jobs:
           } > notes.md
           cd build
           gh release create "$TAG" -R "$REPO" --target "$GITHUB_SHA" --title "Modèles $TAG" --notes-file ../notes.md \
-            upper_limb.glb upper_limb.json upper_limb.landmarks.json full_body.glb full_body.json \
+            upper_limb.glb upper_limb.json upper_limb.landmarks.json full_body.glb full_body.json full_body.landmarks.json \
             SHA256SUMS LICENSE CREDITS.md CC-BY-SA-2.1-JP.txt
