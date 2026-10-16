@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - run: pip install -r pipeline/requirements.txt
+      - run: npm install --no-save gltf-validator@2.0.0-dev.3.10
+      - name: Unit tests
+        run: python -m pytest -q tests
+      - name: Sample model passes the Khronos glTF validator
+        run: |
+          python tests/make_sample.py "$RUNNER_TEMP/sample"
+          python pipeline/check.py "$RUNNER_TEMP/sample/sample.json"
+          node pipeline/validate_gltf.js "$RUNNER_TEMP/sample/sample.glb"

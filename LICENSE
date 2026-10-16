@@ -1,0 +1,16 @@
+Ce dépôt contient deux types de contenus, sous deux licences.
+
+1. Modèles 3D et données anatomiques : CC BY-SA 2.1 Japon
+   Les modèles publiés (fichiers .glb et leurs manifestes .json, y compris ceux attachés aux
+   GitHub Releases de ce dépôt), les repères osseux et les tables de noms (data/) sont des
+   œuvres dérivées de BodyParts3D, © The Database Center for Life Science (DBCLS), et sont
+   distribués sous la licence Creative Commons Attribution - Partage dans les mêmes
+   conditions 2.1 Japon (CC BY-SA 2.1 JP).
+   Texte : LICENSES/CC-BY-SA-2.1-JP.txt
+   URI : https://creativecommons.org/licenses/by-sa/2.1/jp/
+   Crédits et liste des modifications : CREDITS.md
+
+2. Code du pipeline (pipeline/, tests/, .github/) : licence MIT
+   Texte : LICENSES/MIT.txt
+
+Aucun composant sous clause « pas d'utilisation commerciale » (NC) n'est utilisé.
