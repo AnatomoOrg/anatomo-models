@@ -15,7 +15,7 @@ S = "{side}"
 
 def vertebra(name, label, prefix):
     return B(name, prefix,
-             ("processus-epineux", f"Processus épineux de {label}", "saillie", X("post", sup=(0.0, 1))),
+             ("processus-epineux", f"Processus épineux de {label}", "saillie", X("post")),
              paired=False)
 
 
@@ -303,7 +303,7 @@ MUSCLES = [
     M(f"{S} piriformis", "piriforme",
       ("Face pelvienne du sacrum", "posterior part of pelvis", "med"), ("Sommet du grand trochanter", f"{S} femur", "lat")),
     M(f"{S} obturator internus", "obturateur-interne",
-      ("Face interne de la membrane obturatrice", f"{S} side of bony pelvis", "med"), ("Fosse trochantérique", f"{S} femur", "lat")),
+      ("Face interne de la membrane obturatrice", f"{S} side of bony pelvis", "med"), ("Face médiale du grand trochanter", f"{S} femur", "lat")),
     M(f"{S} gemellus superior", "jumeau-superieur",
       ("Épine ischiatique", f"{S} side of bony pelvis", "med"), ("Face médiale du grand trochanter", f"{S} femur", "lat")),
     M(f"{S} gemellus inferior", "jumeau-inferieur",
