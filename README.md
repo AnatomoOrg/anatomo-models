@@ -64,8 +64,10 @@ sources, les vérifie (cohérence glb ↔ manifeste, validateur glTF Khronos) et
   environnement de build pour l'instant.
 - Le chef profond du **court fléchisseur du pouce droit** manque au membre supérieur (le fichier
   4.0 est du mauvais côté et la 3.0 ne l'a pas).
-- Les **noms français** (`data/fr_names.json`) ne couvrent que le membre supérieur et restent à
-  relire ; les autres structures ont `fr: null`.
+- Les **noms français** (`data/fr_names.json`) couvrent toutes les structures sauf la peau. Ils
+  ont été traduits puis relus par des agents, sans relecture humaine, et ne portent pas le côté
+  (sauf quand il fait partie du nom). Conventions et points incertains :
+  [`docs/NOMS.md`](docs/NOMS.md).
 - Les **repères anatomiques** (osseux, attaches musculaires, pouls, repères cliniques ; voir
   [`docs/FORMAT.md`](docs/FORMAT.md#repères-anatomiques)) sont placés géométriquement, pas par un anatomiste.
 - Dans `full_body`, le classement par système vient de l'arbre is-a FMA, avec les noms anglais
