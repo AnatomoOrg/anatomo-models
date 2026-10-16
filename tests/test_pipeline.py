@@ -120,6 +120,34 @@ class NoTree:
     ("right deep palmar venous arch", "veines"),
     ("right deep palmar arch", "arteres"),
     ("right vastus lateralis", "muscles"),
+    ("ascending part of right trapezius", "muscles"),
+    ("right trapezium", "os"),
+    ("tarsal plate of right upper eyelid", "organes"),
+    ("right thyrohyoid membrane", "organes"),
+    ("right iliotibial tract", "organes"),
+    ("choroid plexus of cerebral hemisphere", "organes"),
+    ("right brachial plexus", "nerfs"),
 ])
 def test_full_body_system_by_name(name, expected):
     assert full_body.system(NoTree(), [], name) == expected
+
+
+def test_unpack_backslash_archive(tmp_path):
+    """The 3.0 archive stores backslash paths; unzip warns (exit 1) but the unpack must succeed."""
+    import shutil
+    import subprocess
+    import zipfile
+    if not shutil.which("unzip"):
+        pytest.skip("unzip not installed")
+    with zipfile.ZipFile(tmp_path / "BodyParts3D_3.0_obj_95.zip", "w") as z:
+        info = zipfile.ZipInfo("BodyParts3D_3.0_obj_95\\FMA23130.obj")
+        info.create_system = 0  # made on MS-DOS/Windows, like the real archive: unzip maps backslashes
+        z.writestr(info, "v 0 0 0\n")
+    for name in ("isa_BP3D_4.0_obj_99", "partof_BP3D_4.0_obj_99"):
+        with zipfile.ZipFile(tmp_path / f"{name}.zip", "w") as z:
+            z.writestr(f"{name}/FJ1.obj", "v 0 0 0\n")
+    script = os.path.join(os.path.dirname(__file__), "..", "pipeline", "unpack_bp3d.sh")
+    for _ in range(2):  # second run: already unpacked, nothing to do
+        subprocess.run(["bash", script, str(tmp_path)], check=True)
+    assert (tmp_path / "BodyParts3D_3.0_obj_95" / "FMA23130.obj").is_file()
+    assert (tmp_path / "isa_BP3D_4.0_obj_99" / "FJ1.obj").is_file()

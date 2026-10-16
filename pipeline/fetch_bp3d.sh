@@ -14,7 +14,5 @@ while read -r sum path; do
   fi
   echo "$sum  $f" | sha256sum -c --quiet -
 done < "$HERE/bp3d.sha256"
-for z in isa_BP3D_4.0_obj_99 partof_BP3D_4.0_obj_99 BodyParts3D_3.0_obj_95; do
-  [ -d "$z" ] || unzip -q "$z.zip"
-done
+"$HERE/unpack_bp3d.sh" .
 echo "BodyParts3D ready in $DIR"

@@ -52,15 +52,18 @@ sources, les vérifie (cohérence glb ↔ manifeste, validateur glTF Khronos) et
 - Le build échoue si les maillages 3.0 manquent (pas de repli silencieux sur la 4.0) ; un concept
   dont une partie des fichiers est prise par un concept plus précis reste en 4.0, pour ne pas
   dessiner deux fois la même géométrie.
-- BodyParts3D 4.0 inverse droite et gauche pour le court fléchisseur du pouce et le constricteur
-  moyen du pharynx : le pipeline
-  échange les deux maillages quand une paire droite/gauche est entièrement du mauvais côté.
+- BodyParts3D 4.0 place quelques structures du mauvais côté (court fléchisseur du pouce,
+  constricteur moyen du pharynx, bras du colliculus supérieur, veine lombaire ascendante) : dans
+  le corps entier, le pipeline échange les deux maillages quand une paire droite/gauche est
+  entièrement du mauvais côté, et l'indique dans le journal du build.
 
 ## Limites connues
 
 - BodyParts3D n'a **pas de nerfs du membre supérieur** ; le grand dorsal et le trapèze manquent
   aussi. Z-Anatomy (CC BY-SA 4.0) les a, mais son dépôt n'est pas accessible depuis notre
   environnement de build pour l'instant.
+- Le chef profond du **court fléchisseur du pouce droit** manque au membre supérieur (le fichier
+  4.0 est du mauvais côté et la 3.0 ne l'a pas).
 - Les **noms français** (`data/fr_names.json`) ne couvrent que le membre supérieur et restent à
   relire ; les autres structures ont `fr: null`.
 - Les **repères osseux** de l'humérus sont placés géométriquement, pas par un anatomiste.

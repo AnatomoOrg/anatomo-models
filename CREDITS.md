@@ -26,7 +26,7 @@ Faites par le projet Anatomo avec le code de `pipeline/` :
 - sélection des structures (membre supérieur droit pour `upper_limb`, tout le corps pour `full_body`) ;
 - regroupement des fichiers éléments par concept FMA ;
 - recalage des maillages 3.0 dans le repère 4.0 (translation constante) ;
-- correction d'une inversion droite/gauche de la source (court fléchisseur du pouce, constricteur moyen du pharynx ; 4.0) ;
+- correction des paires droite/gauche placées du mauvais côté dans la source 4.0 (corps entier) ;
 - fusion des sommets dupliqués, décimation ;
 - changement de repère et d'unité (mm → m, axe vertical en +Y) ;
 - fusion des maillages par système anatomique, avec un indice de structure par sommet ;

@@ -48,6 +48,11 @@ def system(name):
 
 
 def structures(bp, fr_names):
+    # All element files of each concept, over both trees.
+    owned = {}
+    for tree in ("isa", "partof"):
+        for c, files in bp.elements[tree][1].items():
+            owned.setdefault(c, set()).update(files)
     groups, seen = {}, set()
     for tree in ("isa", "partof"):
         names, elems = bp.elements[tree]
@@ -61,7 +66,7 @@ def structures(bp, fr_names):
             if f in seen:
                 continue
             seen.add(f)
-            groups.setdefault(names[c], dict(id=c, system=sel[c], files=[], owned=elems[c]))["files"].append(f)
+            groups.setdefault(names[c], dict(id=c, system=sel[c], files=[], owned=owned[c]))["files"].append(f)
     out, marks = [], []
     for name, g in sorted(groups.items()):
         # The 3.0 mesh covers the whole concept: use it only when no other group took part of the concept's
@@ -83,6 +88,6 @@ def structures(bp, fr_names):
                                   position=np.round(to_gltf(p * 1000), 5).tolist()))
     # A missing or misnamed 3.0 archive would otherwise silently publish a ~5x coarser model.
     v3 = sum(x["source"] == "bodyparts3d-3.0" for x in out)
-    assert any(x["id"] == landmarks.HUMERUS and x["source"] == "bodyparts3d-3.0" for x in out), "humerus not from 3.0"
-    assert v3 >= len(out) // 2, f"only {v3}/{len(out)} structures from BodyParts3D 3.0"
+    if not any(x["id"] == landmarks.HUMERUS and x["source"] == "bodyparts3d-3.0" for x in out) or v3 < len(out) // 2:
+        raise SystemExit(f"BodyParts3D 3.0 meshes missing: only {v3}/{len(out)} structures from 3.0 ({bp.v3})")
     return out, marks

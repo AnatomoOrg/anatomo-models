@@ -16,15 +16,16 @@ ROOTS = {"FMA72979": "peau", "FMA65132": "nerfs", "FMA50720": "arteres", "FMA507
          "FMA5022": "muscles", "FMA10474": "muscles", "FMA85453": "muscles", "FMA5018": "os", "FMA55107": "os"}
 # FMA10474 'zone of muscle organ' (acromial part of deltoid...), FMA85453 'head of muscle organ' (long head of biceps...).
 BY_NAME = (
-    ("nerfs", r"nerve|ganglion|plexus|spinal cord"),
+    ("nerfs", r"nerve|ganglion|(?<!choroid )plexus|spinal cord"),
     ("veines", r"vein|venous|sinus|vena"),
     ("arteres", r"arter|aorta|arch of aorta|trunk$|palmar arch"),
     ("muscles", r"muscle|tendon|aponeurosis|abductor|adductor|flexor|extensor|levator|depressor|"
-                r"sphincter|diaphragm|-us$|pectoralis|rectus|vastus|lumbrical|interosse|coccygeus|puborectalis|"
+                r"sphincter|diaphragm|trapezius|pectoralis|rectus|vastus|lumbrical|interosse|coccygeus|puborectalis|"
                 r"longus colli|aryepiglotticus|interspinales|intertransversarii"),
-    ("os", r"bone|vertebra|\bribs?\b|sternum|manubrium|xiphoid|skull|phalanx|carpal|tarsal|femur|tibia|fibula|patella|humerus|radius|ulna|"
-           r"scapula|clavicle|sacrum|coccyx|mandible|maxilla|hyoid|cartilage|ilium|ischium|pubis|calcaneus|talus|"
-           r"hamate|capitate|lunate|trapezi|pisiform|scaphoid|cuboid|cuneiform|navicular|sesamoid|tooth|incisor|"
+    ("os", r"bone|vertebra|\bribs?\b|sternum|manubrium|xiphoid|skull|phalanx|carpal|\b(meta)?tarsal(?! plate)|femur|\btibia\b|"
+           r"fibula|patella|humerus|radius|ulna|"
+           r"scapula|clavicle|sacrum|coccyx|mandible|maxilla|\bhyoid\b|cartilage|ilium|ischium|pubis|calcaneus|talus|"
+           r"hamate|capitate|lunate|\btrapezi(um|oid)\b|pisiform|scaphoid|cuboid|cuneiform|navicular|sesamoid|tooth|incisor|"
            r"canine|molar|ossicle|malleus|incus|stapes|vomer|ethmoid bone|sphenoid bone|occipital bone|parietal bone|"
            r"temporal bone|frontal bone|nasal bone|lacrimal bone|palatine bone|zygomatic bone|nasal concha"),
 )
