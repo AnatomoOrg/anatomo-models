@@ -86,6 +86,9 @@ contient `format`, `model`, `version` et `license` (`{id, url}`).
 }
 ```
 
+`source` vaut `bodyparts3d-4.0` ou `bodyparts3d-3.0` (os et muscles du membre supérieur, muscles absents de la
+4.0 dans `full_body` : face, mastication, paroi abdominale, grand dorsal…).
+
 `index` est propre à un fichier et peut changer d'une version à l'autre : l'app ne doit stocker
 que `id` (FMA ID). Dans `full_body`, quelques structures sans concept FMA gardent l'identifiant
 de leur fichier élément BodyParts3D (`FJ…`).

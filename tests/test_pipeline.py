@@ -237,3 +237,32 @@ def test_landmark_names_audit():
     assert "Tubercule majeur" in names and "Tubercule mineur" in names
     assert not any(re.search(r"(?i)\b(grand|petit) tubercule", n) for n in names)
     assert "Condyle latéral du tibia (plateau tibial)" in names and "Condyle latéral du fémur" in names
+
+
+def test_v3_field():
+    from anatomo_models.v3 import Field
+    a = np.array([[0.0, 0, 0], [1, 0, 0], [0, 1, 0]])
+    # One translation everywhere: every point moves by it.
+    f = Field([(a, np.array([1.0, 2, 3])), (a + 100, np.array([1.0, 2, 3]))])
+    assert np.allclose(f(np.array([[5.0, 5, 5], [50, 50, 50]])), [[6, 7, 8], [51, 52, 53]])
+    # Two regions: a point follows the nearest one, a point halfway gets the mean.
+    f = Field([(a, np.array([0.0, 0, 0])), (a + [1000, 0, 0], np.array([0.0, 0, 10]))])
+    near0, near1, mid = f(np.array([[0.0, 0, 0], [1000.0, 0, 0], [500.5, 0.5, 0]]))
+    assert np.allclose(near0, [0, 0, 0], atol=0.01) and np.allclose(near1, [1000, 0, 10], atol=0.01)
+    assert np.allclose(mid[2], 5, atol=0.5)
+
+
+def test_v3_fit_translation():
+    from anatomo_models.v3 import fit_translation
+    m4 = trimesh.creation.icosphere(subdivisions=3, radius=20)
+    m3 = m4.copy(); m3.apply_translation((-4, 7, 12))
+    t, residual, coverage, _ = fit_translation(m3, m4, t0=(0, 0, 0))
+    assert np.allclose(t, (4, -7, -12), atol=0.2) and residual < 0.5 and coverage < 1
+
+
+def test_v3_additions_are_named():
+    from anatomo_models.model import SYSTEMS
+    fr = json.load(open(os.path.join(os.path.dirname(__file__), "..", "data", "fr_names.json"), encoding="utf-8"))
+    for table in (full_body.V3_ADDITIONS, upper_limb.V3_ADDITIONS):
+        for fid, system in table.items():
+            assert re.fullmatch(r"FMA\d+", fid) and system in SYSTEMS and fr.get(fid), fid

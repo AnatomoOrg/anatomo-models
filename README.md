@@ -44,6 +44,15 @@ sources, les vérifie (cohérence glb ↔ manifeste, validateur glTF Khronos) et
   plus denses que la 4.0), recalés dans le repère de la 4.0 par une translation constante
   (0,7 ; −3,7 ; −10,3 mm). La clavicule et la scapula diffèrent de quelques millimètres.
 - **Vaisseaux et corps entier** : BodyParts3D 4.0, maillages « 99 % ».
+- **Muscles absents de la 4.0** (face, mastication, paroi abdominale, grand dorsal, carré des lombes,
+  multifide, court extenseur des orteils…) : maillages 3.0 entiers, listés à la main dans
+  `V3_ADDITIONS` (`pipeline/full_body.py`, `pipeline/upper_limb.py`). Le corps 3.0 n'est pas une copie
+  rigide du corps 4.0 : la translation constante du bras est fausse de 8 mm à l'atlas et au bassin, de
+  40 mm au pied. Ces maillages sont donc recalés par un champ de déplacement mesuré sur les 485
+  structures présentes dans les deux versions (`pipeline/anatomo_models/v3.py`) : erreur médiane
+  estimée 1,1 mm, 90 % sous 5 mm. Les autres concepts propres à la 3.0 doublent une géométrie 4.0
+  (chefs du fléchisseur superficiel des doigts, ventres du digastrique, cheveux, ténias…) et sont
+  écartés.
 - Fusion des sommets dupliqués avant décimation (sinon la décimation ouvre des trous), puis
   décimation : 20 % pour le membre supérieur (minimum 3 000 triangles par structure, environ
   470 000 au total), environ 1,5 M triangles pour le corps entier.
@@ -59,11 +68,11 @@ sources, les vérifie (cohérence glb ↔ manifeste, validateur glTF Khronos) et
 
 ## Limites connues
 
-- BodyParts3D n'a **pas de nerfs du membre supérieur** ; le grand dorsal manque aussi au membre
-  supérieur. Z-Anatomy (CC BY-SA 4.0) les a, mais son dépôt n'est pas accessible depuis notre
-  environnement de build pour l'instant.
-- Le chef profond du **court fléchisseur du pouce droit** manque au membre supérieur (le fichier
-  4.0 est du mauvais côté et la 3.0 ne l'a pas).
+- BodyParts3D n'a **pas de nerfs du membre supérieur**. Z-Anatomy (CC BY-SA 4.0) les a, mais son
+  dépôt n'est pas accessible depuis notre environnement de build pour l'instant.
+- Le grand dorsal et le chef profond du court fléchisseur du pouce (dont le fichier 4.0 est du mauvais
+  côté) viennent de la 3.0 seule, recalés par le champ de déplacement : leur position est moins sûre
+  que celle des autres structures du membre supérieur.
 - Les **noms français** (`data/fr_names.json`) couvrent toutes les structures sauf la peau. Ils
   ont été traduits puis relus par des agents, sans relecture humaine, et ne portent pas le côté
   (sauf quand il fait partie du nom). Conventions et points incertains :

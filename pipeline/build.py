@@ -26,7 +26,7 @@ SOURCES = [
      "license": "CC-BY-SA-2.1-JP"},
 ]
 # Structure counts of the last reviewed build: fewer means a selection rule or a source file regressed.
-MIN_STRUCTURES = {"upper_limb": 159, "full_body": 1657}
+MIN_STRUCTURES = {"upper_limb": 161, "full_body": 1734}
 
 
 def main():
@@ -49,8 +49,7 @@ def main():
         # Before build(): the system decides which mesh the geometry goes to.
         overridden |= apply_system_overrides(items)
         names |= {x["en"] for x in items}
-        m = build(items, os.path.join(a.out, f"{model}.glb"), os.path.join(a.out, f"{model}.json"), model, version,
-                  SOURCES if model == "upper_limb" else SOURCES[:1])
+        m = build(items, os.path.join(a.out, f"{model}.glb"), os.path.join(a.out, f"{model}.json"), model, version, SOURCES)
         marks, failed = landmarks.place(items, CATALOGUE)
         if failed:
             raise SystemExit(f"{model}: landmarks without a position: {failed}")

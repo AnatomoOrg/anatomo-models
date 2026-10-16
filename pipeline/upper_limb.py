@@ -5,12 +5,14 @@ specific selected concept. Meshes come from BodyParts3D 3.0 "obj_95" when it has
 5x denser than 4.0: bones and most muscles), moved into the 4.0 frame; otherwise from 4.0 "obj_99"
 (vessels), keeping only the files on the right side.
 Vessels: the axillary, brachial, radial and ulnar trees down to the digital arteries, and their veins.
-Known gaps: BodyParts3D has no upper-limb nerves; latissimus dorsi is missing from 4.0.
+Latissimus dorsi and the deep head of flexor pollicis brevis come from 3.0 only (V3_ADDITIONS).
+Known gap: BodyParts3D has no upper-limb nerves.
 """
 import re
 
 import trimesh
 
+from anatomo_models import v3
 from anatomo_models.model import clean, decimate
 
 HUMERUS = "FMA23130"
@@ -34,6 +36,9 @@ VEINS = (r"\b(cephalic|basilic|median cubital|median antebrachial|axillary|brach
          r"anterior circumflex humeral|lateral thoracic|thoracodorsal|proper palmar digital) vein|"
          r"palmar venous arch|dorsal venous network of right hand")
 LOWER_LIMB = r"foot|toe|leg|femor|hallucis|tibial|thigh|hip"
+# Concepts that only BodyParts3D 3.0 has (moved into the 4.0 frame by v3.py), with their system.
+V3_ADDITIONS = {"FMA13358": "muscles",  # right latissimus dorsi
+                "FMA46110": "muscles"}  # deep head of right flexor pollicis brevis (its 4.0 file is on the left)
 
 
 def system(name):
@@ -93,8 +98,12 @@ def structures(bp, fr_names):
         m = decimate(src, max(MIN_TRIS, len(src.faces) * KEEP))
         # `src` (full resolution) is only used to place the landmarks.
         out.append(dict(id=g["id"], en=name, fr=fr_names.get(g["id"]), system=g["system"], mesh=m, src=src, source=source))
+    for c, system_ in sorted(V3_ADDITIONS.items()):
+        m = v3.load(bp, c, keep=KEEP, min_tris=MIN_TRIS)
+        out.append(dict(id=c, en=bp.v3_names[c], fr=fr_names.get(c), system=system_, mesh=m, src=m,
+                        source="bodyparts3d-3.0"))
     # A missing or misnamed 3.0 archive would otherwise silently publish a ~5x coarser model.
-    v3 = sum(x["source"] == "bodyparts3d-3.0" for x in out)
-    if not any(x["id"] == HUMERUS and x["source"] == "bodyparts3d-3.0" for x in out) or v3 < len(out) // 2:
-        raise SystemExit(f"BodyParts3D 3.0 meshes missing: only {v3}/{len(out)} structures from 3.0 ({bp.v3})")
+    n3 = sum(x["source"] == "bodyparts3d-3.0" for x in out)
+    if not any(x["id"] == HUMERUS and x["source"] == "bodyparts3d-3.0" for x in out) or n3 < len(out) // 2:
+        raise SystemExit(f"BodyParts3D 3.0 meshes missing: only {n3}/{len(out)} structures from 3.0 ({bp.v3})")
     return out

@@ -41,6 +41,13 @@ class BP3D:
                 if f.endswith(".obj"):
                     self.files.setdefault(f[:-4], os.path.join(d, f))
         self.v3 = os.path.join(root, "BodyParts3D_3.0_obj_95")
+        # Version 3.0 concept list (parts_list_e.txt) and its composite concepts (made of other 3.0 concepts).
+        self.v3_names, self.v3_composites = {}, set()
+        if os.path.exists(os.path.join(root, "parts_list_e.txt")):
+            for line in self._lines("parts_list_e.txt"):
+                concept, name = line.split("\t")
+                self.v3_names[concept] = name
+            self.v3_composites = {line.split("\t")[0] for line in self._lines("composite_parts.txt")}
 
     def _lines(self, name):
         with open(os.path.join(self.root, name), encoding="utf-8") as f:
@@ -84,11 +91,14 @@ class BP3D:
     def load_v4(self, fid):
         return trimesh.load(self.files[fid], force="mesh", process=True)
 
-    def load_v3(self, concept):
-        """Version 3.0 mesh for a concept, moved into the 4.0 frame, or None if 3.0 has none."""
+    def load_v3(self, concept, raw=False):
+        """Version 3.0 mesh for a concept, or None if 3.0 has none.
+
+        Moved into the 4.0 frame by the constant arm offset, unless `raw` (see v3.py for the whole body)."""
         path = os.path.join(self.v3, concept + ".obj")
         if not os.path.exists(path):
             return None
         m = trimesh.load(path, force="mesh", process=True)
-        m.apply_translation(V3_TO_V4)
+        if not raw:
+            m.apply_translation(V3_TO_V4)
         return m
