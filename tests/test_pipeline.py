@@ -229,6 +229,13 @@ def test_fr_names_audit():
     assert fr["FMA53637"] == "Os zygomatique"  # 'right cheek': its mesh is the zygomatic bone
     # 'fourth common palmar digital artery': its mesh runs to the pulp of the little finger
     assert fr["FMA85123"] == fr["FMA85124"] == "Artère digitale palmaire propre médiale du petit doigt"
+    # Meshes found elsewhere than their FMA concept (anatomical audit of 2026-10-16).
+    assert fr["FMA22954"] == "Veines métatarsiennes dorsales"  # on the feet
+    assert fr["FMA8620"] == "Artère segmentaire antérieure du rein"  # in the right kidney
+    assert fr["FMA71562"] != "Rameaux calcanéens de l'artère tibiale postérieure"  # at the root of the thigh
+    assert fr["FMA4771"] == fr["FMA44340"]  # same mesh as the superficial epigastric vein
+    assert fr["FMA49214"] == fr["FMA7266"] and fr["FMA71889"] == fr["FMA76903"]  # duplicated meshes
+    assert fr["FMA49052"] == "Muscle oblique supérieur de l'œil" and fr["FMA24528"] == "Os cuboïde"
     assert not any("Mâchoire" in v or "Triquetrum" in v for v in fr.values())
 
 
@@ -239,6 +246,9 @@ def test_landmark_names_audit():
     assert "Tubercule majeur" in names and "Tubercule mineur" in names
     assert not any(re.search(r"(?i)\b(grand|petit) tubercule", n) for n in names)
     assert "Condyle latéral du tibia (plateau tibial)" in names and "Condyle latéral du fémur" in names
+    assert "Processus costiforme de L3" in names and "Processus transverse de L3" not in names
+    assert "Processus transverse de T1" in names
+    assert "Acétabulum" not in names and "Fosse de l'acétabulum" in names
 
 
 def test_v3_field():
