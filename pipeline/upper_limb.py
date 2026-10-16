@@ -4,7 +4,8 @@ Selection by English FMA name (right side, one regex per system); each element f
 specific selected concept. Meshes come from BodyParts3D 3.0 "obj_95" when it has the concept (about
 5x denser than 4.0: bones and most muscles), moved into the 4.0 frame; otherwise from 4.0 "obj_99"
 (vessels), keeping only the files on the right side.
-Known gaps: BodyParts3D has no upper-limb nerves; latissimus dorsi and trapezius are missing.
+Vessels: the axillary, brachial, radial and ulnar trees down to the digital arteries, and their veins.
+Known gaps: BodyParts3D has no upper-limb nerves; latissimus dorsi is missing from 4.0.
 """
 import re
 
@@ -20,19 +21,25 @@ MUSCLES = (r"deltoid|biceps brachii|triceps brachii|brachialis|coracobrachialis|
            r"flexor pollicis|extensor pollicis|abductor pollicis|adductor pollicis|opponens|extensor digitorum(?! longus| brevis)|"
            r"extensor indicis|extensor digiti minimi|abductor digiti minimi of right hand|flexor digiti minimi brevis of right hand|"
            r"lumbrical.*hand|interosse.*hand|supraspinatus|infraspinatus|teres (major|minor)|subscapularis|pectoralis (major|minor)|"
-           r"latissimus dorsi|serratus anterior|rhomboid|levator scapulae|subclavius")
+           r"latissimus dorsi|trapezius|serratus anterior|rhomboid|levator scapulae|subclavius|flexor retinaculum of right wrist")
 NERVES = r"median nerve|ulnar nerve|radial nerve|musculocutaneous nerve|axillary nerve"
 BONES = (r"clavicle|scapula|humerus|radius|ulna|scaphoid|lunate|triquetral|pisiform|trapezium|trapezoid|capitate|hamate|"
          r"metacarpal|phalanx of right (thumb|index|middle|ring|little)")
-ARTERIES = (r"(axillary|brachial|deep brachial|radial|ulnar|(common |anterior |posterior )?interosseous) artery|"
-            r"(superficial|deep) palmar (arterial )?arch")
-VEINS = r"\b(cephalic|basilic|median cubital|median antebrachial|axillary|brachial|radial|ulnar) vein"
+ARTERIES = (r"(axillary|brachial|deep brachial|radial|ulnar|(common |anterior |posterior )?interosseous|"
+            r"(anterior|posterior) circumflex humeral|lateral thoracic|thoracodorsal|thoraco-acromial|radial recurrent|"
+            r"common palmar digital|proper palmar digital) artery|"
+            r"(superficial|deep) palmar (arterial )?arch|arteria (princeps pollicis|radialis indicis)|"
+            r"(middle|radial) collateral branch|dorsal carpal branch|(pectoral|acromial|deltoid) branch of right thoraco-acromial")
+VEINS = (r"\b(cephalic|basilic|median cubital|median antebrachial|axillary|brachial|radial|ulnar|"
+         r"anterior circumflex humeral|lateral thoracic|thoracodorsal|proper palmar digital) vein|"
+         r"palmar venous arch|dorsal venous network of right hand")
 LOWER_LIMB = r"foot|toe|leg|femor|hallucis|tibial|thigh|hip"
 
 
 def system(name):
     n = name.lower()
-    if "right" not in n or "branch" in n:
+    # 'branch of right brachial artery' is a generic concept; named branches ('dorsal carpal branch of...') are kept.
+    if "right" not in n or n.startswith(("branch of", "set of branches")):
         return None
     for s, rx in (("nerfs", NERVES), ("arteres", ARTERIES), ("veines", VEINS), ("muscles", MUSCLES), ("os", BONES)):
         # 'ulna', 'scapula', 'metacarpal' also occur in vessel names (ulnar recurrent artery...).
@@ -45,7 +52,8 @@ def system(name):
     return None
 
 
-def structures(bp, fr_names):
+def groups(bp):
+    """{name: {id, system, files, owned}}: each element file goes to the selected concept with the fewest files."""
     # All element files of each concept, over both trees.
     owned = {}
     for tree in ("isa", "partof"):
@@ -65,8 +73,12 @@ def structures(bp, fr_names):
                 continue
             seen.add(f)
             groups.setdefault(names[c], dict(id=c, system=sel[c], files=[], owned=owned[c]))["files"].append(f)
+    return groups
+
+
+def structures(bp, fr_names):
     out = []
-    for name, g in sorted(groups.items()):
+    for name, g in sorted(groups(bp).items()):
         # The 3.0 mesh covers the whole concept: use it only when no other group took part of the concept's
         # files (e.g. recurrent branches of the ulnar artery), or that geometry would be drawn twice.
         whole = set(g["files"]) >= g["owned"]

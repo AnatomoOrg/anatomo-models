@@ -25,6 +25,8 @@ SOURCES = [
     {"name": "BodyParts3D 3.0 (obj_95)", "url": "https://dbarchive.biosciencedbc.jp/data/bodyparts3d/20110915/",
      "license": "CC-BY-SA-2.1-JP"},
 ]
+# Structure counts of the last reviewed build: fewer means a selection rule or a source file regressed.
+MIN_STRUCTURES = {"upper_limb": 159, "full_body": 1657}
 
 
 def main():
@@ -42,6 +44,8 @@ def main():
         if a.only not in (None, model):
             continue
         items = structures()
+        if len(items) < MIN_STRUCTURES[model]:
+            raise SystemExit(f"{model}: {len(items)} structures, expected at least {MIN_STRUCTURES[model]}")
         # Before build(): the system decides which mesh the geometry goes to.
         overridden |= apply_system_overrides(items)
         names |= {x["en"] for x in items}

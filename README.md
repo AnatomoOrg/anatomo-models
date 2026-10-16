@@ -15,7 +15,7 @@ manifestes, leurs repères anatomiques, une somme SHA-256 et les textes de licen
 
 | Modèle | Contenu | Maillages (draw calls) |
 |---|---|---|
-| `upper_limb` | Membre supérieur droit (MVP) : os, muscles, artères, veines | 4 |
+| `upper_limb` | Membre supérieur droit et ceinture scapulaire (MVP) : os, muscles, artères, veines | 4 |
 | `full_body` | Corps entier, tous systèmes (contexte) | 7 |
 
 Chaque modèle a **un maillage par système** au lieu d'un maillage par structure (le prototype
@@ -59,8 +59,8 @@ sources, les vérifie (cohérence glb ↔ manifeste, validateur glTF Khronos) et
 
 ## Limites connues
 
-- BodyParts3D n'a **pas de nerfs du membre supérieur** ; le grand dorsal et le trapèze manquent
-  aussi. Z-Anatomy (CC BY-SA 4.0) les a, mais son dépôt n'est pas accessible depuis notre
+- BodyParts3D n'a **pas de nerfs du membre supérieur** ; le grand dorsal manque aussi au membre
+  supérieur. Z-Anatomy (CC BY-SA 4.0) les a, mais son dépôt n'est pas accessible depuis notre
   environnement de build pour l'instant.
 - Le chef profond du **court fléchisseur du pouce droit** manque au membre supérieur (le fichier
   4.0 est du mauvais côté et la 3.0 ne l'a pas).
