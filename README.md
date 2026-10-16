@@ -73,6 +73,16 @@ sources, les vérifie (cohérence glb ↔ manifeste, validateur glTF Khronos) et
 - Le grand dorsal et le chef profond du court fléchisseur du pouce (dont le fichier 4.0 est du mauvais
   côté) viennent de la 3.0 seule, recalés par le champ de déplacement : leur position est moins sûre
   que celle des autres structures du membre supérieur.
+- **Peau** (`full_body`) : le maillage BodyParts3D est une coque fermée d'environ 2 mm d'épaisseur
+  (surfaces externe et interne raccordées aux orifices). Les fentes palpébrales sont ouvertes, comme sur
+  un sujet aux yeux ouverts : la cornée est visible entre les paupières, ce n'est pas un trou. Quelques
+  structures dépassent la peau de quelques millimètres, parce que les maillages sources ne sont pas
+  ajustés entre eux : cartilages du nez (2 à 5 mm), auricule (`external ear`), quelques veines
+  superficielles des doigts, et certains muscles ajoutés depuis la 3.0 (partie orbitaire de
+  l'orbiculaire de l'œil, temporo-pariétal). Les cheveux, sourcils et poils
+  pubiens, qui formaient une couche rose par-dessus la peau, sont maintenant dans le système `peau`. La
+  peau n'est pas gonflée au build : la décaler le long de ses normales déplacerait aussi sa surface
+  interne et rétrécirait les orifices (paupières, narines, lèvres).
 - Les **noms français** (`data/fr_names.json`) couvrent toutes les structures sauf la peau. Ils
   ont été traduits puis relus par des agents, sans relecture humaine, et ne portent pas le côté
   (sauf quand il fait partie du nom). Conventions et points incertains :
