@@ -1,7 +1,8 @@
-"""Build the published models from BodyParts3D.
+"""Build the published models from BodyParts3D (and Open3DModel for the upper-limb nerves).
 
-Usage: python3 pipeline/build.py SRC_DIR OUT_DIR [--only upper_limb|full_body]
-SRC_DIR holds the BodyParts3D files fetched by pipeline/fetch_bp3d.sh.
+Usage: python3 pipeline/build.py SRC_DIR OUT_DIR [--only upper_limb|full_body] [--open3d DIR]
+SRC_DIR holds the BodyParts3D files fetched by pipeline/fetch_bp3d.sh; the Open3DModel OBJ fetched by
+pipeline/fetch_open3d.sh is read from DIR (default SRC_DIR/open3d).
 """
 import argparse
 import json
@@ -12,10 +13,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import full_body  # noqa: E402
 import upper_limb  # noqa: E402
-from anatomo_models import landmarks  # noqa: E402
+from anatomo_models import landmarks, open3d  # noqa: E402
 from anatomo_models.bp3d import BP3D  # noqa: E402
 from anatomo_models.landmark_catalog import CATALOGUE  # noqa: E402
-from anatomo_models.model import build  # noqa: E402
+from anatomo_models.model import ATTRIBUTION, LICENSE, build  # noqa: E402
+from anatomo_models.overrides import SYSTEM_OVERRIDES, apply_system_overrides  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOURCES = [
@@ -24,26 +26,45 @@ SOURCES = [
     {"name": "BodyParts3D 3.0 (obj_95)", "url": "https://dbarchive.biosciencedbc.jp/data/bodyparts3d/20110915/",
      "license": "CC-BY-SA-2.1-JP"},
 ]
+# Structure counts of the last reviewed build: fewer means a selection rule or a source file regressed.
+# upper_limb: 161 BodyParts3D structures + 48 Open3DModel nerves.
+MIN_STRUCTURES = {"upper_limb": 209, "full_body": 1734}
+# upper_limb includes the Open3DModel nerves (CC BY-SA 4.0); full_body stays under BodyParts3D's licence.
+MODELS = {
+    "upper_limb": {"sources": SOURCES + [open3d.SOURCE], "license": open3d.LICENSE, "attribution": open3d.ATTRIBUTION},
+    "full_body": {"sources": SOURCES, "license": LICENSE, "attribution": ATTRIBUTION},
+}
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("src"); ap.add_argument("out")
     ap.add_argument("--only", choices=("upper_limb", "full_body"))
+    ap.add_argument("--open3d", help="directory of upper-limb.obj (default: SRC/open3d)")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     version = open(os.path.join(ROOT, "VERSION")).read().strip()
     fr = json.load(open(os.path.join(ROOT, "data", "fr_names.json"), encoding="utf-8"))
     bp = BP3D(a.src)
-    names = set()
-    for model, structures in (("upper_limb", lambda: upper_limb.structures(bp, fr)),
+    names, overridden = set(), set()
+    o3d = os.path.join(a.open3d or os.path.join(a.src, "open3d"), open3d.OBJ)
+
+    def upper_limb_items():
+        items = upper_limb.structures(bp, fr)
+        return items + open3d.nerves(o3d, items)
+
+    for model, structures in (("upper_limb", upper_limb_items),
                               ("full_body", lambda: full_body.structures(bp, fr))):
         if a.only not in (None, model):
             continue
         items = structures()
+        if len(items) < MIN_STRUCTURES[model]:
+            raise SystemExit(f"{model}: {len(items)} structures, expected at least {MIN_STRUCTURES[model]}")
+        # Before build(): the system decides which mesh the geometry goes to.
+        overridden |= apply_system_overrides(items)
         names |= {x["en"] for x in items}
         m = build(items, os.path.join(a.out, f"{model}.glb"), os.path.join(a.out, f"{model}.json"), model, version,
-                  SOURCES if model == "upper_limb" else SOURCES[:1])
+                  **MODELS[model])
         marks, failed = landmarks.place(items, CATALOGUE)
         if failed:
             raise SystemExit(f"{model}: landmarks without a position: {failed}")
@@ -51,6 +72,8 @@ def main():
         report(m, marks)
     if a.only is None and (missing := landmarks.unresolved(names, CATALOGUE)):
         raise SystemExit(f"catalogue structures found in no model (misspelt?): {missing}")
+    if a.only is None and (stale := sorted(set(SYSTEM_OVERRIDES) - overridden)):
+        raise SystemExit(f"system overrides matching no structure (misspelt or obsolete?): {stale}")
 
 
 def write_landmarks(m, marks, path):

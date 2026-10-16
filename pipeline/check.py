@@ -18,6 +18,9 @@ def check(manifest_path):
     m = json.load(open(manifest_path, encoding="utf-8"))
     gltf, nodes = read_glb(os.path.join(os.path.dirname(manifest_path), m["glb"]))
     assert gltf["asset"]["copyright"] == m["attribution"]
+    assert gltf["asset"].get("extras", {}).get("license") == m["license"]
+    # Geometry only: some source textures (Open3DModel) are under a non-commercial licence.
+    assert not {"images", "textures", "samplers"} & set(gltf), "the model must not embed textures"
     assert [s["key"] for s in m["systems"]] == list(nodes)
     assert [s["index"] for s in m["structures"]] == list(range(len(m["structures"])))
     assert len({s["id"] for s in m["structures"]}) == len(m["structures"])

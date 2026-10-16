@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import sys
 
 import numpy as np
@@ -73,6 +74,31 @@ def test_duplicate_ids_rejected(tmp_path):
     ("right radial vein", "veines"),
     ("right median antebrachial vein", "veines"),
     ("right brachiocephalic vein", None),
+    ("right internal thoracic artery", None),
+    ("right anterior circumflex humeral artery", "arteres"),
+    ("right posterior circumflex humeral artery", "arteres"),
+    ("right lateral thoracic artery", "arteres"),
+    ("right thoracodorsal artery", "arteres"),
+    ("trunk of right thoraco-acromial artery", "arteres"),
+    ("deltoid branch of right thoraco-acromial artery", "arteres"),
+    ("right radial recurrent artery", "arteres"),
+    ("middle collateral branch of right deep brachial artery", "arteres"),
+    ("radial collateral branch of right deep brachial artery", "arteres"),
+    ("dorsal carpal branch of right radial artery", "arteres"),
+    ("right dorsal carpal branch of ulnar artery", "arteres"),
+    ("right fourth common palmar digital artery", "arteres"),
+    ("medial proper palmar digital artery of right index finger", "arteres"),
+    ("right arteria princeps pollicis", "arteres"),
+    ("right arteria radialis indicis", "arteres"),
+    ("right anterior circumflex humeral vein", "veines"),
+    ("right superficial palmar venous arch", "veines"),
+    ("right deep palmar venous arch", "veines"),
+    ("dorsal venous network of right hand", "veines"),
+    ("proper palmar digital vein of right ring finger", "veines"),
+    ("ascending part of right trapezius", "muscles"),
+    ("flexor retinaculum of right wrist", "muscles"),
+    ("right trapezium", "os"),
+    ("left lateral thoracic artery", None),
 ])
 def test_upper_limb_system(name, expected):
     assert upper_limb.system(name) == expected
@@ -151,3 +177,92 @@ def test_unpack_backslash_archive(tmp_path):
         subprocess.run(["bash", script, str(tmp_path)], check=True)
     assert (tmp_path / "BodyParts3D_3.0_obj_95" / "FMA23130.obj").is_file()
     assert (tmp_path / "isa_BP3D_4.0_obj_99" / "FJ1.obj").is_file()
+
+
+def test_system_overrides_are_valid():
+    from anatomo_models.model import SYSTEMS
+    from anatomo_models.overrides import SYSTEM_OVERRIDES
+    for fid, (system, reason) in SYSTEM_OVERRIDES.items():
+        assert fid.startswith("FMA") and system in SYSTEMS and reason.strip(), fid
+
+
+@pytest.mark.parametrize("fid,system", [
+    ("FMA25058", "organes"),  # intervertebral disc C2-C3
+    ("FMA55099", "organes"),  # thyroid cartilage
+    ("FMA59838", "organes"),  # septal nasal cartilage
+    ("FMA54241", "peau"),  # hair of head
+    ("FMA54319", "peau"),  # pubic hair
+    ("FMA11336", "muscles"),  # linea alba
+    ("FMA15746", "organes"),  # liver segment VIII
+    ("FMA259248", "arteres"),  # abdominal aorta
+])
+def test_system_overrides_audit(fid, system):
+    from anatomo_models.overrides import SYSTEM_OVERRIDES
+    assert SYSTEM_OVERRIDES[fid][0] == system
+
+
+def test_system_override_moves_geometry(tmp_path):
+    """An overridden structure is written in the mesh of its new system, and the manifest agrees."""
+    from anatomo_models.overrides import apply_system_overrides
+    items, logs = sample(), []
+    found = apply_system_overrides(items, {"FMA9": ("organes", "test"), "FMA2": ("muscles", "test"),
+                                           "FMA404": ("os", "test")}, log=logs.append)
+    assert found == {"FMA9", "FMA2"}
+    assert any("not needed" in x for x in logs)  # FMA2 already in muscles
+    m = build(items, str(tmp_path / "x.glb"), str(tmp_path / "x.json"), "x", "0.0.0", [])
+    check.check(str(tmp_path / "x.json"))
+    assert [s["key"] for s in m["systems"]] == ["os", "muscles", "organes"]
+    by_id = {s["id"]: s for s in m["structures"]}
+    assert by_id["FMA9"]["system"] == "organes"
+    gltf, nodes = read_glb(str(tmp_path / "x.glb"))
+    c = sample()[1]["mesh"]
+    assert len(nodes["organes"]["POSITION"]) == len(c.vertices)
+    assert set(nodes["organes"]["_STRUCTURE"]) == {by_id["FMA9"]["index"]}
+    assert set(nodes["os"]["_STRUCTURE"]) == {by_id["FMA1"]["index"]}
+
+
+def test_fr_names_audit():
+    fr = json.load(open(os.path.join(os.path.dirname(__file__), "..", "data", "fr_names.json"), encoding="utf-8"))
+    assert fr["FMA24439"] == fr["FMA24440"] == "Triquétrum"
+    assert fr["FMA25058"] == "Disque intervertébral C2-C3"  # 'intervertebral disk of axis': below the axis
+    assert fr["FMA54397"] == "Gencive supérieure"  # 'upper jaw': its mesh is the gingiva
+    assert fr["FMA53637"] == "Os zygomatique"  # 'right cheek': its mesh is the zygomatic bone
+    assert not any("Mâchoire" in v or "Triquetrum" in v for v in fr.values())
+
+
+def test_landmark_names_audit():
+    from anatomo_models.landmark_catalog import CATALOGUE
+    from anatomo_models.landmarks import META
+    names = {fr for e in CATALOGUE for _, fr, *_ in e.marks} | {fr for fr, _ in META.values()}
+    assert "Tubercule majeur" in names and "Tubercule mineur" in names
+    assert not any(re.search(r"(?i)\b(grand|petit) tubercule", n) for n in names)
+    assert "Condyle latéral du tibia (plateau tibial)" in names and "Condyle latéral du fémur" in names
+
+
+def test_v3_field():
+    from anatomo_models.v3 import Field
+    a = np.array([[0.0, 0, 0], [1, 0, 0], [0, 1, 0]])
+    # One translation everywhere: every point moves by it.
+    f = Field([(a, np.array([1.0, 2, 3])), (a + 100, np.array([1.0, 2, 3]))])
+    assert np.allclose(f(np.array([[5.0, 5, 5], [50, 50, 50]])), [[6, 7, 8], [51, 52, 53]])
+    # Two regions: a point follows the nearest one, a point halfway gets the mean.
+    f = Field([(a, np.array([0.0, 0, 0])), (a + [1000, 0, 0], np.array([0.0, 0, 10]))])
+    near0, near1, mid = f(np.array([[0.0, 0, 0], [1000.0, 0, 0], [500.5, 0.5, 0]]))
+    assert np.allclose(near0, [0, 0, 0], atol=0.01) and np.allclose(near1, [1000, 0, 10], atol=0.01)
+    assert np.allclose(mid[2], 5, atol=0.5)
+
+
+def test_v3_fit_translation():
+    from anatomo_models.v3 import fit_translation
+    m4 = trimesh.creation.icosphere(subdivisions=3, radius=20)
+    m3 = m4.copy(); m3.apply_translation((-4, 7, 12))
+    t, residual, coverage, _ = fit_translation(m3, m4, t0=(0, 0, 0))
+    assert np.allclose(t, (4, -7, -12), atol=0.2) and residual < 0.5 and coverage < 1
+
+
+def test_v3_additions_are_named():
+    from anatomo_models.model import SYSTEMS
+    fr = json.load(open(os.path.join(os.path.dirname(__file__), "..", "data", "fr_names.json"), encoding="utf-8"))
+    for table in (full_body.V3_ADDITIONS, upper_limb.V3_ADDITIONS):
+        for fid, system in table.items():
+            assert re.fullmatch(r"FMA\d+", fid) and system in SYSTEMS and fr.get(fid), fid

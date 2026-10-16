@@ -5,7 +5,7 @@ nom et ses repères anatomiques `.landmarks.json`.
 
 | Fichier | Contenu |
 |---|---|
-| `upper_limb.glb` / `.json` | Membre supérieur droit (MVP) : os, muscles, artères, veines |
+| `upper_limb.glb` / `.json` | Membre supérieur droit et ceinture scapulaire (MVP) : os, muscles, artères, veines, nerfs |
 | `full_body.glb` / `.json` | Corps entier (contexte), tous systèmes |
 | `<modèle>.landmarks.json` | Repères anatomiques : osseux, attaches musculaires, pouls, repères cliniques |
 
@@ -22,6 +22,23 @@ Un nœud, un maillage et une seule primitive (triangles indexés, index `uint32`
 anatomique. L'ordre des nœuds suit l'ordre d'affichage : `os`, `muscles`, `arteres`, `veines`,
 `nerfs`, `organes`, `peau` (les systèmes vides sont omis). Le nom du nœud est la clé du système.
 
+### Systèmes
+
+| Clé | Contenu |
+|---|---|
+| `os` | Os, cartilages costaux (partie des côtes dans la TA) et dents (tissu dur, montré avec le crâne dans les atlas) |
+| `muscles` | Muscles squelettiques et leurs parties tendineuses : tendons, aponévroses, raphés (ligne blanche, raphé pharyngien), rétinaculums, anneau tendineux commun, tractus iliotibial |
+| `arteres` | Artères |
+| `veines` | Veines |
+| `nerfs` | Nerfs et ganglions (BodyParts3D n'a que des nerfs crâniens ; nerfs du membre supérieur de `upper_limb` : Open3DModel) |
+| `organes` | Tout le reste : viscères, encéphale, cœur (y compris ses muscles papillaires), cartilages hors côtes (larynx, nez), disques intervertébraux, ligaments et membranes (sauf le ligament inguinal, partie de l'aponévrose de l'oblique externe, rangé en `muscles` comme la ligne blanche) |
+| `peau` | Peau et phanères (cheveux, sourcils, poils pubiens) |
+
+Le système vient du classement BodyParts3D/FMA (arbre is-a, noms anglais en secours). Les structures que ce
+classement range mal sont corrigées par FMA ID dans `pipeline/anatomo_models/overrides.py`, avec la raison de
+chaque correction ; le build applique cette table avant d'écrire les maillages, et échoue si une entrée ne
+correspond plus à aucune structure.
+
 Attributs de sommet :
 
 | Attribut glTF | Nom three.js | Type | Sens |
@@ -35,8 +52,19 @@ identifiant) : chacune occupe une plage **contiguë** de sommets et de triangles
 n'est partagé entre deux structures. Chaque matériau porte une couleur indicative par système ;
 l'app est censée appliquer ses propres matériaux.
 
-`asset.copyright` contient l'attribution BodyParts3D avec l'URI de la licence ; `asset.extras`
-contient `format`, `model`, `version` et `license` (`{id, url}`).
+`asset.copyright` contient l'attribution des sources avec l'URI de leurs licences ; `asset.extras`
+contient `format`, `model`, `version` et `license` (`{id, url}`), la licence du modèle. Le glb ne
+contient ni image, ni texture, ni coordonnées de texture.
+
+## Licence de chaque modèle
+
+| Modèle | `license.id` | Sources |
+|---|---|---|
+| `upper_limb` | `CC-BY-SA-4.0` | BodyParts3D (CC BY-SA 2.1 JP, adaptable sous une version ultérieure) et Open3DModel (CC BY-SA 4.0) pour les nerfs |
+| `full_body` | `CC-BY-SA-2.1-JP` | BodyParts3D |
+
+L'app lit la licence et l'attribution dans le manifeste du modèle affiché (`license`, `attribution`),
+sans les supposer identiques d'un modèle à l'autre.
 
 ## Le manifeste
 
@@ -47,9 +75,10 @@ contient `format`, `model`, `version` et `license` (`{id, url}`).
   "version": "1.0.0",
   "glb": "upper_limb.glb",
   "frame": {"units": "m", "up": "+Y", "anterior": "+Z", "subject_left": "+X"},
-  "license": {"id": "CC-BY-SA-2.1-JP", "url": "https://creativecommons.org/licenses/by-sa/2.1/jp/"},
-  "attribution": "BodyParts3D, © The Database Center for Life Science, …",
-  "sources": [{"name": "BodyParts3D 4.0", "url": "…", "license": "CC-BY-SA-2.1-JP"}],
+  "license": {"id": "CC-BY-SA-4.0", "url": "https://creativecommons.org/licenses/by-sa/4.0/"},
+  "attribution": "BodyParts3D, © The Database Center for Life Science, … Nerves: \"Open3DModel - Upper limb …",
+  "sources": [{"name": "BodyParts3D 4.0", "url": "…", "license": "CC-BY-SA-2.1-JP"}, …,
+              {"name": "Open3DModel, upper limb (AnatomyTOOL), geometry only", "url": "…", "license": "CC-BY-SA-4.0"}],
   "systems": [
     {"key": "os", "node": "os", "vertices": 61234, "triangles": 120345, "structures": 32}
   ],
@@ -63,15 +92,23 @@ contient `format`, `model`, `version` et `license` (`{id, url}`).
       "vertices": [0, 4210],      // [premier sommet, nombre] dans le maillage du système
       "triangles": [0, 8400],     // [premier triangle, nombre] dans le maillage du système
       "bbox": [[-0.21, 0.98, -0.05], [-0.15, 1.31, 0.02]],
-      "source": "bodyparts3d-3.0"
+      "source": "bodyparts3d-3.0"   // ou "bodyparts3d-4.0", "open3dmodel" (nerfs de upper_limb)
     }
   ]
 }
 ```
 
+`source` vaut `bodyparts3d-4.0` ou `bodyparts3d-3.0` (os et muscles du membre supérieur, muscles absents de la
+4.0 dans `full_body` : face, mastication, paroi abdominale, grand dorsal…).
+
 `index` est propre à un fichier et peut changer d'une version à l'autre : l'app ne doit stocker
 que `id` (FMA ID). Dans `full_body`, quelques structures sans concept FMA gardent l'identifiant
 de leur fichier élément BodyParts3D (`FJ…`).
+
+Les nerfs de `upper_limb` (Open3DModel) portent aussi un FMA ID, choisi à la main. Un objet source qui
+regroupe plusieurs nerfs (divisions du plexus brachial, nerfs digitaux) est rattaché au concept FMA
+d'ensemble ou générique, dont le nom anglais ne porte pas de côté (`set of anterior divisions of
+brachial plexus`, `proper palmar digital branch of median nerve`…) : le côté est celui du modèle (droit).
 
 ## Repères anatomiques
 
@@ -100,7 +137,7 @@ de leur fichier élément BodyParts3D (`FJ…`).
 
   | `kind` | Porté par | Sens |
   |---|---|---|
-  | `saillie` | os | Processus, tubercule, épine, épicondyle… |
+  | `saillie` | os (ou cartilage du larynx) | Processus, tubercule, épine, épicondyle… |
   | `articulaire` | os | Surface articulaire (tête, condyle, cavité) |
   | `depression` | os | Fosse, sillon, incisure |
   | `repere` | os | Autre repère (col, bord, repère de niveau ou de nerf) |
@@ -120,8 +157,8 @@ ramené sur la surface publiée. Toutes les positions restent à faire valider. 
 pas l'os dans le modèle (chef qui se termine sur un tendon commun) est omise ; si l'os manque au modèle (pas de côtes
 ni de sternum dans `upper_limb`), le repère est placé à l'extrémité correspondante du muscle.
 
-BodyParts3D n'a pas les nerfs périphériques : les repères liés aux nerfs sont portés par les os (sillon du nerf
-ulnaire, col de la fibula).
+Les repères liés aux nerfs sont portés par les os (sillon du nerf ulnaire, col de la fibula) : BodyParts3D n'a pas
+les nerfs périphériques, et les nerfs Open3DModel de `upper_limb` n'ont pas encore de repères.
 
 Jusqu'à la v1.0.0, seul `upper_limb` avait des repères (12, sur l'humérus) et ils n'avaient pas de `side`.
 

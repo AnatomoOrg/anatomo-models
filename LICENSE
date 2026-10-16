@@ -1,16 +1,35 @@
-Ce dépôt contient deux types de contenus, sous deux licences.
+Ce dépôt contient deux types de contenus, sous plusieurs licences.
 
-1. Modèles 3D et données anatomiques : CC BY-SA 2.1 Japon
-   Les modèles publiés (fichiers .glb et leurs manifestes .json, y compris ceux attachés aux
-   GitHub Releases de ce dépôt), les repères osseux et les tables de noms (data/) sont des
-   œuvres dérivées de BodyParts3D, © The Database Center for Life Science (DBCLS), et sont
-   distribués sous la licence Creative Commons Attribution - Partage dans les mêmes
-   conditions 2.1 Japon (CC BY-SA 2.1 JP).
-   Texte : LICENSES/CC-BY-SA-2.1-JP.txt
-   URI : https://creativecommons.org/licenses/by-sa/2.1/jp/
+1. Modèles 3D et données anatomiques
+
+   a. Modèle upper_limb (membre supérieur) : CC BY-SA 4.0
+      Le modèle publié upper_limb (upper_limb.glb, son manifeste upper_limb.json et ses repères
+      upper_limb.landmarks.json, y compris ceux attachés aux GitHub Releases de ce dépôt) combine :
+      - des adaptations de BodyParts3D, © The Database Center for Life Science (DBCLS),
+        CC BY-SA 2.1 Japon ; l'article 5(2) de cette licence permet de distribuer une adaptation
+        sous une version ultérieure de la même licence ;
+      - les nerfs de l'Open3DModel (Open3D project, AnatomyTOOL.org ; Jan Kooloos, RadboudUMC ;
+        Eungyeol Lee, LUMC et al.), CC BY-SA 4.0. Seule la géométrie (export OBJ, sans texture)
+        est utilisée.
+      Il est distribué sous la licence Creative Commons Attribution - Partage dans les mêmes
+      conditions 4.0 International (CC BY-SA 4.0).
+      Texte : LICENSES/CC-BY-SA-4.0.txt
+      URI : https://creativecommons.org/licenses/by-sa/4.0/
+
+   b. Modèle full_body (corps entier) et tables de noms : CC BY-SA 2.1 Japon
+      Le modèle publié full_body (full_body.glb, full_body.json, full_body.landmarks.json) et les
+      tables de noms (data/) sont des œuvres dérivées de BodyParts3D,
+      © The Database Center for Life Science (DBCLS), et sont distribués sous la licence
+      Creative Commons Attribution - Partage dans les mêmes conditions 2.1 Japon (CC BY-SA 2.1 JP).
+      Texte : LICENSES/CC-BY-SA-2.1-JP.txt
+      URI : https://creativecommons.org/licenses/by-sa/2.1/jp/
+
+   Chaque fichier publié indique sa licence (asset.copyright et asset.extras.license du glb,
+   champs license et attribution du manifeste et des repères).
    Crédits et liste des modifications : CREDITS.md
 
 2. Code du pipeline (pipeline/, tests/, .github/) : licence MIT
    Texte : LICENSES/MIT.txt
 
-Aucun composant sous clause « pas d'utilisation commerciale » (NC) n'est utilisé.
+Aucun composant sous clause « pas d'utilisation commerciale » (NC) n'est utilisé : les textures
+de l'Open3DModel (CC BY-NC-SA) ne sont ni téléchargées ni incluses.
