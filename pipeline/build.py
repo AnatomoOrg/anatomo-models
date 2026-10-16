@@ -16,6 +16,7 @@ from anatomo_models import landmarks  # noqa: E402
 from anatomo_models.bp3d import BP3D  # noqa: E402
 from anatomo_models.landmark_catalog import CATALOGUE  # noqa: E402
 from anatomo_models.model import build  # noqa: E402
+from anatomo_models.overrides import SYSTEM_OVERRIDES, apply_system_overrides  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOURCES = [
@@ -35,12 +36,14 @@ def main():
     version = open(os.path.join(ROOT, "VERSION")).read().strip()
     fr = json.load(open(os.path.join(ROOT, "data", "fr_names.json"), encoding="utf-8"))
     bp = BP3D(a.src)
-    names = set()
+    names, overridden = set(), set()
     for model, structures in (("upper_limb", lambda: upper_limb.structures(bp, fr)),
                               ("full_body", lambda: full_body.structures(bp, fr))):
         if a.only not in (None, model):
             continue
         items = structures()
+        # Before build(): the system decides which mesh the geometry goes to.
+        overridden |= apply_system_overrides(items)
         names |= {x["en"] for x in items}
         m = build(items, os.path.join(a.out, f"{model}.glb"), os.path.join(a.out, f"{model}.json"), model, version,
                   SOURCES if model == "upper_limb" else SOURCES[:1])
@@ -51,6 +54,8 @@ def main():
         report(m, marks)
     if a.only is None and (missing := landmarks.unresolved(names, CATALOGUE)):
         raise SystemExit(f"catalogue structures found in no model (misspelt?): {missing}")
+    if a.only is None and (stale := sorted(set(SYSTEM_OVERRIDES) - overridden)):
+        raise SystemExit(f"system overrides matching no structure (misspelt or obsolete?): {stale}")
 
 
 def write_landmarks(m, marks, path):

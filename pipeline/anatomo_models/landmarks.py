@@ -328,10 +328,10 @@ def unresolved(names, catalogue):
 HUMERUS = "FMA23130"
 
 META = {
-    "tete": ("Tête de l'humérus", "articulaire"), "grand-tubercule": ("Grand tubercule", "saillie"),
-    "petit-tubercule": ("Petit tubercule", "saillie"), "sillon-intertuberculaire": ("Sillon intertuberculaire", "depression"),
-    "col-chirurgical": ("Col chirurgical", "repere"), "tuberosite-deltoidienne": ("Tubérosité deltoïdienne", "saillie"),
-    "epicondyle-lateral": ("Épicondyle latéral", "saillie"), "epicondyle-medial": ("Épicondyle médial", "saillie"),
+    "tete": ("Tête de l'humérus", "articulaire"), "grand-tubercule": ("Tubercule majeur", "saillie"),
+    "petit-tubercule": ("Tubercule mineur", "saillie"), "sillon-intertuberculaire": ("Sillon intertuberculaire", "depression"),
+    "col-chirurgical": ("Col chirurgical de l'humérus", "repere"), "tuberosite-deltoidienne": ("Tubérosité deltoïdienne", "saillie"),
+    "epicondyle-lateral": ("Épicondyle latéral de l'humérus", "saillie"), "epicondyle-medial": ("Épicondyle médial de l'humérus", "saillie"),
     "capitulum": ("Capitulum de l'humérus", "articulaire"), "trochlee": ("Trochlée de l'humérus", "articulaire"),
     "fosse-olecranienne": ("Fosse olécrânienne", "depression"), "fosse-coronoidienne": ("Fosse coronoïdienne", "depression"),
 }

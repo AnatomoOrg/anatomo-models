@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import sys
 
 import numpy as np
@@ -151,3 +152,63 @@ def test_unpack_backslash_archive(tmp_path):
         subprocess.run(["bash", script, str(tmp_path)], check=True)
     assert (tmp_path / "BodyParts3D_3.0_obj_95" / "FMA23130.obj").is_file()
     assert (tmp_path / "isa_BP3D_4.0_obj_99" / "FJ1.obj").is_file()
+
+
+def test_system_overrides_are_valid():
+    from anatomo_models.model import SYSTEMS
+    from anatomo_models.overrides import SYSTEM_OVERRIDES
+    for fid, (system, reason) in SYSTEM_OVERRIDES.items():
+        assert fid.startswith("FMA") and system in SYSTEMS and reason.strip(), fid
+
+
+@pytest.mark.parametrize("fid,system", [
+    ("FMA25058", "organes"),  # intervertebral disc C2-C3
+    ("FMA55099", "organes"),  # thyroid cartilage
+    ("FMA59838", "organes"),  # septal nasal cartilage
+    ("FMA54241", "peau"),  # hair of head
+    ("FMA54319", "peau"),  # pubic hair
+    ("FMA11336", "muscles"),  # linea alba
+    ("FMA15746", "organes"),  # liver segment VIII
+    ("FMA259248", "arteres"),  # abdominal aorta
+])
+def test_system_overrides_audit(fid, system):
+    from anatomo_models.overrides import SYSTEM_OVERRIDES
+    assert SYSTEM_OVERRIDES[fid][0] == system
+
+
+def test_system_override_moves_geometry(tmp_path):
+    """An overridden structure is written in the mesh of its new system, and the manifest agrees."""
+    from anatomo_models.overrides import apply_system_overrides
+    items, logs = sample(), []
+    found = apply_system_overrides(items, {"FMA9": ("organes", "test"), "FMA2": ("muscles", "test"),
+                                           "FMA404": ("os", "test")}, log=logs.append)
+    assert found == {"FMA9", "FMA2"}
+    assert any("not needed" in x for x in logs)  # FMA2 already in muscles
+    m = build(items, str(tmp_path / "x.glb"), str(tmp_path / "x.json"), "x", "0.0.0", [])
+    check.check(str(tmp_path / "x.json"))
+    assert [s["key"] for s in m["systems"]] == ["os", "muscles", "organes"]
+    by_id = {s["id"]: s for s in m["structures"]}
+    assert by_id["FMA9"]["system"] == "organes"
+    gltf, nodes = read_glb(str(tmp_path / "x.glb"))
+    c = sample()[1]["mesh"]
+    assert len(nodes["organes"]["POSITION"]) == len(c.vertices)
+    assert set(nodes["organes"]["_STRUCTURE"]) == {by_id["FMA9"]["index"]}
+    assert set(nodes["os"]["_STRUCTURE"]) == {by_id["FMA1"]["index"]}
+
+
+def test_fr_names_audit():
+    fr = json.load(open(os.path.join(os.path.dirname(__file__), "..", "data", "fr_names.json"), encoding="utf-8"))
+    assert fr["FMA24439"] == fr["FMA24440"] == "Triquétrum"
+    assert fr["FMA25058"] == "Disque intervertébral C2-C3"  # 'intervertebral disk of axis': below the axis
+    assert fr["FMA54397"] == "Gencive supérieure"  # 'upper jaw': its mesh is the gingiva
+    assert fr["FMA53637"] == "Os zygomatique"  # 'right cheek': its mesh is the zygomatic bone
+    assert not any("Mâchoire" in v or "Triquetrum" in v for v in fr.values())
+
+
+def test_landmark_names_audit():
+    from anatomo_models.landmark_catalog import CATALOGUE
+    from anatomo_models.landmarks import META
+    names = {fr for e in CATALOGUE for _, fr, *_ in e.marks} | {fr for fr, _ in META.values()}
+    assert "Tubercule majeur" in names and "Tubercule mineur" in names
+    assert not any(re.search(r"(?i)\b(grand|petit) tubercule", n) for n in names)
+    assert "Condyle latéral du tibia (plateau tibial)" in names and "Condyle latéral du fémur" in names

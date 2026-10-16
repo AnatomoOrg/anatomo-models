@@ -71,4 +71,8 @@ sources, les vérifie (cohérence glb ↔ manifeste, validateur glTF Khronos) et
 - Les **repères anatomiques** (osseux, attaches musculaires, pouls, repères cliniques ; voir
   [`docs/FORMAT.md`](docs/FORMAT.md#repères-anatomiques)) sont placés géométriquement, pas par un anatomiste.
 - Dans `full_body`, le classement par système vient de l'arbre is-a FMA, avec les noms anglais
-  en secours : quelques structures peuvent être mal rangées (notamment dans `organes`).
+  en secours. Les erreurs relevées (cartilages et disques en `os`, segments du foie en `veines`, poils en
+  `organes`…) sont corrigées par une table explicite, FMA ID par FMA ID, dans
+  [`pipeline/anatomo_models/overrides.py`](pipeline/anatomo_models/overrides.py) ; ce que contient chaque
+  système est décrit dans [`docs/FORMAT.md`](docs/FORMAT.md#systèmes). Le système `organes` reste
+  hétérogène (viscères, encéphale, ligaments, cartilages).

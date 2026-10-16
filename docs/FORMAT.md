@@ -22,6 +22,23 @@ Un nœud, un maillage et une seule primitive (triangles indexés, index `uint32`
 anatomique. L'ordre des nœuds suit l'ordre d'affichage : `os`, `muscles`, `arteres`, `veines`,
 `nerfs`, `organes`, `peau` (les systèmes vides sont omis). Le nom du nœud est la clé du système.
 
+### Systèmes
+
+| Clé | Contenu |
+|---|---|
+| `os` | Os, cartilages costaux (partie des côtes dans la TA) et dents (tissu dur, montré avec le crâne dans les atlas) |
+| `muscles` | Muscles squelettiques et leurs parties tendineuses : tendons, aponévroses, raphés (ligne blanche, raphé pharyngien), rétinaculums, anneau tendineux commun, tractus iliotibial |
+| `arteres` | Artères |
+| `veines` | Veines |
+| `nerfs` | Nerfs et ganglions (BodyParts3D n'a que des nerfs crâniens) |
+| `organes` | Tout le reste : viscères, encéphale, cœur (y compris ses muscles papillaires), cartilages hors côtes (larynx, nez), disques intervertébraux, ligaments et membranes |
+| `peau` | Peau et phanères (cheveux, sourcils, poils pubiens) |
+
+Le système vient du classement BodyParts3D/FMA (arbre is-a, noms anglais en secours). Les structures que ce
+classement range mal sont corrigées par FMA ID dans `pipeline/anatomo_models/overrides.py`, avec la raison de
+chaque correction ; le build applique cette table avant d'écrire les maillages, et échoue si une entrée ne
+correspond plus à aucune structure.
+
 Attributs de sommet :
 
 | Attribut glTF | Nom three.js | Type | Sens |
@@ -100,7 +117,7 @@ de leur fichier élément BodyParts3D (`FJ…`).
 
   | `kind` | Porté par | Sens |
   |---|---|---|
-  | `saillie` | os | Processus, tubercule, épine, épicondyle… |
+  | `saillie` | os (ou cartilage du larynx) | Processus, tubercule, épine, épicondyle… |
   | `articulaire` | os | Surface articulaire (tête, condyle, cavité) |
   | `depression` | os | Fosse, sillon, incisure |
   | `repere` | os | Autre repère (col, bord, repère de niveau ou de nerf) |
