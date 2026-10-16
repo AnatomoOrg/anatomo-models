@@ -1,10 +1,12 @@
 # anatomo-models
 
 Modèles 3D anatomiques de l'app Anatomo, et le pipeline qui les produit à partir de
-[BodyParts3D](https://dbarchive.biosciencedbc.jp/en/bodyparts3d/).
+[BodyParts3D](https://dbarchive.biosciencedbc.jp/en/bodyparts3d/) et, pour les nerfs du membre
+supérieur, de l'[Open3DModel](https://anatomytool.org/node/63906) (AnatomyTOOL).
 
-Les modèles sont des œuvres dérivées de BodyParts3D, publiées en libre accès sous
-**CC BY-SA 2.1 Japon**, la licence de la source. Le code du pipeline est sous licence MIT.
+Les modèles sont des œuvres dérivées publiées en libre accès : `full_body` sous **CC BY-SA 2.1 Japon**,
+la licence de BodyParts3D ; `upper_limb`, qui contient aussi les nerfs de l'Open3DModel (CC BY-SA 4.0),
+sous **CC BY-SA 4.0**. Le code du pipeline est sous licence MIT.
 Voir [`LICENSE`](LICENSE) et [`CREDITS.md`](CREDITS.md).
 
 ## Télécharger les modèles
@@ -15,7 +17,7 @@ manifestes, leurs repères anatomiques, une somme SHA-256 et les textes de licen
 
 | Modèle | Contenu | Maillages (draw calls) |
 |---|---|---|
-| `upper_limb` | Membre supérieur droit et ceinture scapulaire (MVP) : os, muscles, artères, veines | 4 |
+| `upper_limb` | Membre supérieur droit et ceinture scapulaire (MVP) : os, muscles, artères, veines, nerfs | 5 |
 | `full_body` | Corps entier, tous systèmes (contexte) | 7 |
 
 Chaque modèle a **un maillage par système** au lieu d'un maillage par structure (le prototype
@@ -27,6 +29,7 @@ indice de structure par sommet. Le format est décrit dans [`docs/FORMAT.md`](do
 ```sh
 pip install -r pipeline/requirements.txt
 pipeline/fetch_bp3d.sh bp3d                 # ~750 Mo, sommes SHA-256 vérifiées
+pipeline/fetch_open3d.sh bp3d/open3d        # nerfs du membre supérieur, OBJ ~21 Mo, géométrie seule
 python pipeline/build.py bp3d build         # ou --only upper_limb / --only full_body
 python pipeline/check.py build/upper_limb.json build/full_body.json
 python -m pytest -q tests
@@ -37,6 +40,26 @@ python -m pytest -q tests
 Changer `VERSION` sur `main`. Le workflow `Release models` reconstruit les modèles depuis les
 sources, les vérifie (cohérence glb ↔ manifeste, validateur glTF Khronos) et crée la release
 `v<VERSION>`. Une release existante n'est jamais écrasée.
+
+### Si le fichier Open3DModel change en amont
+
+`upper-limb-obj.zip` est épinglé par sa somme SHA-256 (`pipeline/open3d.sha256`) ; AnatomyTOOL le met
+parfois à jour (dernière version datée du 14/10/2026). Si `fetch_open3d.sh` signale une somme
+différente, le build s'arrête : rien n'est publié avec un fichier non relu. Pour adopter la nouvelle
+version :
+
+1. Relire la licence et le crédit demandés sur <https://anatomytool.org/node/63906> et
+   <https://anatomytool.org/node/63903> (toujours CC BY-SA 4.0, export OBJ sans texture) ; reporter un
+   changement de crédit dans `pipeline/anatomo_models/open3d.py` (`CREDIT`) et `CREDITS.md`.
+2. Télécharger le zip, vérifier qu'il ne contient que des `.obj` (`unzip -l`), calculer sa somme
+   (`sha256sum`) et la mettre dans `pipeline/open3d.sha256`.
+3. `pipeline/fetch_open3d.sh bp3d/open3d && python pipeline/build.py bp3d build --only upper_limb` :
+   le build échoue si un objet de `NERVES` ou un os de `BONES` a disparu ou a été renommé (adapter la
+   table), ou si le recalage dépasse 4 mm RMS. Contrôler le journal du recalage et le nombre de nerfs.
+4. `python pipeline/check.py …`, `python -m pytest -q tests`, puis mettre à jour la date du fichier
+   dans `CREDITS.md`.
+
+Aucune copie binaire n'est gardée dans git ; une release déjà publiée contient les modèles construits.
 
 ## Sources et choix du pipeline
 
@@ -53,9 +76,17 @@ sources, les vérifie (cohérence glb ↔ manifeste, validateur glTF Khronos) et
   estimée 1,1 mm, 90 % sous 5 mm. Les autres concepts propres à la 3.0 doublent une géométrie 4.0
   (chefs du fléchisseur superficiel des doigts, ventres du digastrique, cheveux, ténias…) et sont
   écartés.
+- **Nerfs du membre supérieur** : Open3DModel (export OBJ « upper limb », géométrie seule, SHA-256
+  épinglé ; les textures, CC BY-NC-SA, ne sont jamais téléchargées). 50 objets nerveux, du plexus
+  brachial (rameaux antérieurs C5–T1, troncs, divisions, faisceaux) aux nerfs digitaux, rattachés à
+  48 concepts FMA par une table manuelle (`pipeline/anatomo_models/open3d.py`). L'Open3DModel est
+  environ 3 % plus grand que BodyParts3D et décalé d'une dizaine de centimètres : le build le recale
+  sur les os BodyParts3D du modèle par une similitude (ICP sur 18 os communs : scapula, clavicule,
+  humérus, radius, ulna, carpe, métacarpiens ; erreur résiduelle 1,3 mm RMS) et échoue si le recalage
+  dépasse 4 mm. Décimation 50 % (environ 99 000 triangles pour les nerfs).
 - Fusion des sommets dupliqués avant décimation (sinon la décimation ouvre des trous), puis
   décimation : 20 % pour le membre supérieur (minimum 3 000 triangles par structure, environ
-  470 000 au total), environ 1,5 M triangles pour le corps entier.
+  470 000 au total hors nerfs), environ 1,5 M triangles pour le corps entier.
 - Chaque fichier élément de BodyParts3D est rattaché à son concept FMA le plus spécifique (dans
   les arbres is-a et part-of).
 - Le build échoue si les maillages 3.0 manquent (pas de repli silencieux sur la 4.0) ; un concept
@@ -68,8 +99,13 @@ sources, les vérifie (cohérence glb ↔ manifeste, validateur glTF Khronos) et
 
 ## Limites connues
 
-- BodyParts3D n'a **pas de nerfs du membre supérieur**. Z-Anatomy (CC BY-SA 4.0) les a, mais son
-  dépôt n'est pas accessible depuis notre environnement de build pour l'instant.
+- BodyParts3D n'a **pas de nerfs du membre supérieur** : ceux de `upper_limb` viennent de
+  l'Open3DModel, un autre sujet recalé sur nos os. Après recalage, quelques nerfs touchent encore
+  un os de quelques millimètres (nerf radial dans le sillon du nerf radial, jusqu'à 5,6 mm ; nerf
+  cutané latéral inférieur du bras, nerf suprascapulaire, jusqu'à 3,3 mm). Les nerfs digitaux suivent
+  la position des doigts de l'Open3DModel, proche de la nôtre. Le nerf thoracodorsal et le nerf
+  intercostobrachial manquent (absents de la source). Points anatomiques incertains : voir
+  [`docs/NOMS.md`](docs/NOMS.md#nerfs-du-membre-supérieur-open3dmodel).
 - Le grand dorsal et le chef profond du court fléchisseur du pouce (dont le fichier 4.0 est du mauvais
   côté) viennent de la 3.0 seule, recalés par le champ de déplacement : leur position est moins sûre
   que celle des autres structures du membre supérieur.

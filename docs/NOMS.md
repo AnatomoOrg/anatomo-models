@@ -83,3 +83,30 @@ Les noms sources qui semblent erronés sont traduits tels quels.
 | posterior part of pelvis | Sacrum et coccyx | Le fichier source est rattaché au sacrum ; la hauteur du maillage (14 cm) et le repère « Apex du coccyx » laissent penser qu'il contient aussi le coccyx |
 | intervertebral disk | Disque intervertébral T12-L1 | Concept générique ; T12-L1 d'après la position du maillage |
 | myocardial zone 12 | Muscle papillaire antérieur du ventricule gauche, chef antérolatéral | Le muscle papillaire « latéral » de la FMA correspond au muscle papillaire antérieur de la TA |
+
+## Nerfs du membre supérieur (Open3DModel)
+
+Les 50 objets nerveux de l'Open3DModel n'ont pas de nom FMA : la table `NERVES` de
+`pipeline/anatomo_models/open3d.py` associe chacun à un FMA ID, au nom FMA anglais et à un nom
+français (terminologie anatomique internationale en français). Ces noms ne sont pas dans
+`data/fr_names.json` (réservé aux structures BodyParts3D). Les FMA ID et les noms anglais ont été
+vérifiés dans la FMA publiée par l'EBI (OLS, octobre 2026) ; les choix n'ont pas été relus par un
+anatomiste. Quand la FMA a un concept du côté droit, il est utilisé ; sinon (objets qui regroupent
+plusieurs nerfs), le concept d'ensemble ou générique, sans côté.
+
+| Objet Open3DModel | FMA | Nom français | Doute |
+| --- | --- | --- | --- |
+| `T1_root.r` | FMA6073 right first intercostal nerve | Rameau antérieur du 1er nerf thoracique (racine T1 du plexus brachial) | La FMA nomme ce rameau « first intercostal nerve » (synonyme : anterior ramus of first thoracic nerve) ; l'objet n'en montre que la racine du plexus |
+| `Anterior_divisions…`, `Posterior_divisions…` | FMA77549, FMA77550 (set of …) | Divisions antérieures / postérieures du plexus brachial | Un seul objet pour les trois divisions : concept d'ensemble, sans côté |
+| `Radial_nerve_(deep_branch)` + `…(posterior_interosseus_n)` | FMA65335 right posterior interosseous nerve | Rameau profond du nerf radial et nerf interosseux postérieur | Deux objets fusionnés : la FMA fait du rameau profond un synonyme du nerf interosseux postérieur |
+| `Ulnar_nerve_Superficial_br_Common_palmar_digital_n` + `Ulnar_nerve_Communicating_br` | FMA44894 superficial branch of right ulnar nerve | Rameau superficiel du nerf ulnaire | L'objet part de la division du nerf ulnaire (rameau superficiel et son nerf digital palmaire commun). Le rameau communicant avec le nerf médian n'a dans la FMA qu'un concept de variante (`FMA0326786`, identifiant atypique) : il est fusionné ici |
+| `Median_nerve_Common_palmar_digital_nerve_of_the_thumb` | FMA44851 first common palmar digital branch of right median nerve | 1er nerf digital palmaire commun du nerf médian | La FMA fait naître de ce nerf les deux nerfs digitaux palmaires propres du pouce ; la numérotation varie selon les auteurs |
+| `Median_nerve_Common_palmar_digital_nerves` | FMA44840 (générique) | Nerfs digitaux palmaires communs du nerf médian | Les autres nerfs communs, regroupés |
+| `Median_nerve_Proper_palmar_digital_nerves` | FMA44853 (générique) | Nerfs digitaux palmaires propres du nerf médian | Concept parent de celui du pouce (FMA44854), utilisé à part pour l'objet du pouce |
+| `Median_nerve_Recurrent_br` | FMA291310 thenar muscular branch of right median nerve | Rameau thénarien du nerf médian (rameau récurrent) | |
+| `Axillary_nerve_-_superior_lateral_br_cutaneous_nerve` | FMA37073 right axillary nerve | Nerf axillaire | L'objet contient aussi le nerf cutané latéral supérieur du bras (FMA81294), non séparé |
+| `Subclavian_nerve` | FMA65285 right subclavian nerve | Nerf subclavier | Aussi appelé nerf du muscle subclavier |
+| `Ulnar_nerve_Palmar_cutaneous_br` | FMA65349 palmar branch of right ulnar nerve | Rameau palmaire du nerf ulnaire | Rameau cutané palmaire |
+
+Absents de la source : nerf thoracodorsal, nerf intercostobrachial, nerf interosseux antérieur,
+pas d'objet séparé pour les rameaux musculaires.
