@@ -15,8 +15,9 @@ Source : <https://dbarchive.biosciencedbc.jp/en/bodyparts3d/>
 | 4.0 (2013) | `isa_BP3D_4.0_obj_99`, `partof_BP3D_4.0_obj_99`, listes de parties et arbres is-a / part-of | Corps entier ; vaisseaux du membre supérieur ; noms et arbres FMA |
 | 3.0 (2011-09-15) | `BodyParts3D_3.0_obj_95` | Os et muscles du membre supérieur (maillages plus denses) |
 
-Les identifiants de structures (`FMA…`) viennent de la Foundational Model of Anatomy, telle que
-reprise par BodyParts3D.
+Les identifiants et les noms anglais des structures (`FMA…`) viennent de la
+**Foundational Model of Anatomy** (Structural Informatics Group, University of Washington,
+licence CC BY 3.0), telle que reprise par BodyParts3D.
 
 ## Modifications apportées
 
@@ -25,13 +26,15 @@ Faites par le projet Anatomo avec le code de `pipeline/` :
 - sélection des structures (membre supérieur droit pour `upper_limb`, tout le corps pour `full_body`) ;
 - regroupement des fichiers éléments par concept FMA ;
 - recalage des maillages 3.0 dans le repère 4.0 (translation constante) ;
+- correction d'une inversion droite/gauche de la source (court fléchisseur du pouce, constricteur moyen du pharynx ; 4.0) ;
 - fusion des sommets dupliqués, décimation ;
 - changement de repère et d'unité (mm → m, axe vertical en +Y) ;
 - fusion des maillages par système anatomique, avec un indice de structure par sommet ;
 - ajout de noms français (`data/fr_names.json`) et de repères osseux calculés (humérus).
 
 Les modèles dérivés sont distribués sous la même licence, CC BY-SA 2.1 JP (voir `LICENSE`).
-Les fichiers glb portent l'attribution dans `asset.copyright`.
+Les fichiers glb portent l'attribution et l'URI de la licence dans `asset.copyright`, et les
+manifestes et le fichier de repères dans leurs champs `attribution` et `license`.
 
 ## Pour les applications qui utilisent ces modèles
 

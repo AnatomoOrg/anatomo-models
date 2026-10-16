@@ -47,7 +47,14 @@ sources, les vérifie (cohérence glb ↔ manifeste, validateur glTF Khronos) et
 - Fusion des sommets dupliqués avant décimation (sinon la décimation ouvre des trous), puis
   décimation : 20 % pour le membre supérieur (minimum 3 000 triangles par structure, environ
   470 000 au total), environ 1,5 M triangles pour le corps entier.
-- Chaque fichier élément de BodyParts3D est rattaché à son concept FMA le plus spécifique.
+- Chaque fichier élément de BodyParts3D est rattaché à son concept FMA le plus spécifique (dans
+  les arbres is-a et part-of).
+- Le build échoue si les maillages 3.0 manquent (pas de repli silencieux sur la 4.0) ; un concept
+  dont une partie des fichiers est prise par un concept plus précis reste en 4.0, pour ne pas
+  dessiner deux fois la même géométrie.
+- BodyParts3D 4.0 inverse droite et gauche pour le court fléchisseur du pouce et le constricteur
+  moyen du pharynx : le pipeline
+  échange les deux maillages quand une paire droite/gauche est entièrement du mauvais côté.
 
 ## Limites connues
 

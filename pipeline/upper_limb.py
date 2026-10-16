@@ -26,8 +26,9 @@ MUSCLES = (r"deltoid|biceps brachii|triceps brachii|brachialis|coracobrachialis|
 NERVES = r"median nerve|ulnar nerve|radial nerve|musculocutaneous nerve|axillary nerve"
 BONES = (r"clavicle|scapula|humerus|radius|ulna|scaphoid|lunate|triquetral|pisiform|trapezium|trapezoid|capitate|hamate|"
          r"metacarpal|phalanx of right (thumb|index|middle|ring|little)")
-ARTERIES = r"(axillary|brachial|radial|ulnar) artery|superficial palmar arch|deep palmar arch"
-VEINS = r"(cephalic|basilic|median cubital|axillary|brachial) vein"
+ARTERIES = (r"(axillary|brachial|deep brachial|radial|ulnar|(common |anterior |posterior )?interosseous) artery|"
+            r"(superficial|deep) palmar (arterial )?arch")
+VEINS = r"\b(cephalic|basilic|median cubital|median antebrachial|axillary|brachial|radial|ulnar) vein"
 LOWER_LIMB = r"foot|toe|leg|femor|hallucis|tibial|thigh|hip"
 
 
@@ -60,10 +61,13 @@ def structures(bp, fr_names):
             if f in seen:
                 continue
             seen.add(f)
-            groups.setdefault(names[c], dict(id=c, system=sel[c], files=[]))["files"].append(f)
+            groups.setdefault(names[c], dict(id=c, system=sel[c], files=[], owned=elems[c]))["files"].append(f)
     out, marks = [], []
     for name, g in sorted(groups.items()):
-        m, source = bp.load_v3(g["id"]), "bodyparts3d-3.0"
+        # The 3.0 mesh covers the whole concept: use it only when no other group took part of the concept's
+        # files (e.g. recurrent branches of the ulnar artery), or that geometry would be drawn twice.
+        whole = set(g["files"]) >= g["owned"]
+        m, source = (bp.load_v3(g["id"]) if whole else None), "bodyparts3d-3.0"
         if m is None:
             # The subject's right side is at negative x; drop element files from the other side.
             parts = [p for p in map(bp.load_v4, g["files"]) if p.bounds.mean(0)[0] < 0]
@@ -77,4 +81,8 @@ def structures(bp, fr_names):
             for slug, fr, kind, p in landmarks.humerus(m.vertices * 0.001, m.vertex_normals):
                 marks.append(dict(id=f"humerus.{slug}", structure=g["id"], fr=fr, kind=kind,
                                   position=np.round(to_gltf(p * 1000), 5).tolist()))
+    # A missing or misnamed 3.0 archive would otherwise silently publish a ~5x coarser model.
+    v3 = sum(x["source"] == "bodyparts3d-3.0" for x in out)
+    assert any(x["id"] == landmarks.HUMERUS and x["source"] == "bodyparts3d-3.0" for x in out), "humerus not from 3.0"
+    assert v3 >= len(out) // 2, f"only {v3}/{len(out)} structures from BodyParts3D 3.0"
     return out, marks

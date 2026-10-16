@@ -26,7 +26,8 @@ SYSTEMS = {
 BP3D_TO_GLTF = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]], float)
 
 ATTRIBUTION = ("BodyParts3D, © The Database Center for Life Science, licensed under "
-               "CC Attribution-Share Alike 2.1 Japan. Modified by the Anatomo project.")
+               "CC Attribution-Share Alike 2.1 Japan (https://creativecommons.org/licenses/by-sa/2.1/jp/). "
+               "Modified by the Anatomo project.")
 LICENSE = {"id": "CC-BY-SA-2.1-JP", "url": "https://creativecommons.org/licenses/by-sa/2.1/jp/"}
 
 
@@ -64,6 +65,7 @@ def decimate(mesh, target):
 def build(structures, glb_path, manifest_path, model, version, sources):
     """structures: list of dicts {id, en, fr, system, mesh (trimesh, BodyParts3D frame, mm), source}."""
     by_system = {s: sorted((x for x in structures if x["system"] == s), key=lambda x: x["id"]) for s in SYSTEMS}
+    assert all(x["system"] in SYSTEMS for x in structures), "unknown system"
     ids = [x["id"] for x in structures]
     assert len(ids) == len(set(ids)), "duplicate structure id"
     primitives, entries, systems = [], [], []
@@ -89,7 +91,7 @@ def build(structures, glb_path, manifest_path, model, version, sources):
                            "structure": np.concatenate(sid), "indices": np.concatenate(idx), "color": color})
         systems.append({"key": system, "node": system, "vertices": nv, "triangles": nt, "structures": len(items)})
     write_glb(glb_path, primitives, copyright=ATTRIBUTION,
-              extras={"format": FORMAT, "model": model, "version": version, "license": LICENSE["id"]})
+              extras={"format": FORMAT, "model": model, "version": version, "license": LICENSE})
     manifest = {
         "format": FORMAT, "model": model, "version": version, "glb": glb_path.rsplit("/", 1)[-1],
         "frame": {"units": "m", "up": "+Y", "anterior": "+Z", "subject_left": "+X"},

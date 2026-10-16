@@ -35,8 +35,8 @@ identifiant) : chacune occupe une plage **contiguë** de sommets et de triangles
 n'est partagé entre deux structures. Chaque matériau porte une couleur indicative par système ;
 l'app est censée appliquer ses propres matériaux.
 
-`asset.copyright` contient l'attribution BodyParts3D ; `asset.extras` contient `format`, `model`,
-`version` et `license`.
+`asset.copyright` contient l'attribution BodyParts3D avec l'URI de la licence ; `asset.extras`
+contient `format`, `model`, `version` et `license` (`{id, url}`).
 
 ## Le manifeste
 
@@ -78,6 +78,7 @@ de leur fichier élément BodyParts3D (`FJ…`).
 ```jsonc
 {
   "format": "anatomo-models/1", "version": "1.0.0", "frame": { … },
+  "license": { … }, "attribution": "…",
   "landmarks": [
     {"id": "humerus.tete", "structure": "FMA23130", "fr": "Tête de l'humérus",
      "kind": "articulaire", "position": [-0.17, 1.30, -0.01]}

@@ -38,7 +38,8 @@ def main():
         m = build(items, os.path.join(a.out, "upper_limb.glb"), os.path.join(a.out, "upper_limb.json"),
                   "upper_limb", version, SOURCES)
         with open(os.path.join(a.out, "upper_limb.landmarks.json"), "w", encoding="utf-8") as f:
-            json.dump({"format": m["format"], "version": version, "frame": m["frame"], "landmarks": marks},
+            json.dump({"format": m["format"], "version": version, "frame": m["frame"], "license": m["license"],
+                       "attribution": m["attribution"], "landmarks": marks},
                       f, ensure_ascii=False, indent=1)
             f.write("\n")
         report(m)

@@ -8,6 +8,7 @@ import trimesh
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "pipeline"))
 import check  # noqa: E402
+import full_body  # noqa: E402
 import upper_limb  # noqa: E402
 from anatomo_models.glb import read_glb  # noqa: E402
 from anatomo_models.model import build, to_gltf  # noqa: E402
@@ -67,6 +68,11 @@ def test_duplicate_ids_rejected(tmp_path):
     ("extensor digitorum longus of right leg", None),
     ("left humerus", None),
     ("branch of right brachial artery", None),
+    ("right superficial palmar arterial arch", "arteres"),
+    ("right anterior interosseous artery", "arteres"),
+    ("right radial vein", "veines"),
+    ("right median antebrachial vein", "veines"),
+    ("right brachiocephalic vein", None),
 ])
 def test_upper_limb_system(name, expected):
     assert upper_limb.system(name) == expected
@@ -95,3 +101,25 @@ def test_most_specific_owner(tmp_path):
     assert bp.most_specific_owner("FJ1") == "FMA2"
     assert bp.most_specific_owner("FJ2") == "FMA2"
     assert bp.most_specific_owner("FJ9") is None
+
+
+class NoTree:
+    containers = {}
+
+    def ancestor_in(self, concept, roots):
+        return None
+
+
+@pytest.mark.parametrize("name,expected", [
+    ("anterior superior tributary of right hepatic biliary tree", "organes"),
+    ("right superior parietal lobule", "organes"),
+    ("right lacrimal gland", "organes"),
+    ("proximal part of ileum", "organes"),
+    ("right seventh rib", "os"),
+    ("right parietal bone", "os"),
+    ("right deep palmar venous arch", "veines"),
+    ("right deep palmar arch", "arteres"),
+    ("right vastus lateralis", "muscles"),
+])
+def test_full_body_system_by_name(name, expected):
+    assert full_body.system(NoTree(), [], name) == expected
