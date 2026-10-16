@@ -8,7 +8,7 @@ Order matters: a rule may refer to a landmark placed earlier ('@femur.malleole..
 French names follow the international nomenclature (Terminologia Anatomica, French usage); muscle
 attachments are named after the bony site. Every position is geometric and remains to be reviewed.
 """
-from .landmarks import META, B, C, F, M, Mid, N, X, humerus_rule
+from .landmarks import META, A, B, C, F, M, Mid, N, X, humerus_rule
 
 S = "{side}"
 
@@ -20,7 +20,9 @@ def vertebra(name, label, prefix):
 
 
 def transverse(name, label, prefix):
-    return B(name, prefix, ("processus-transverse", f"Processus transverse de {label}", "saillie", X("lat")), paired=True)
+    # Lumbar vertebrae: the « transverse » process is the costal process (processus costiforme in French usage).
+    kind = "Processus costiforme" if label.startswith("L") else "Processus transverse"
+    return B(name, prefix, ("processus-transverse", f"{kind} de {label}", "saillie", X("lat")), paired=True)
 
 
 VERTEBRAE = [("atlas", "C1", "c1"), ("axis", "C2", "c2")] + [
@@ -37,8 +39,8 @@ BONES = [
     B(f"{S} clavicle", "clavicule",
       ("extremite-sternale", "Extrémité sternale de la clavicule", "articulaire", X("med")),
       ("extremite-acromiale", "Extrémité acromiale de la clavicule", "articulaire", X("lat")),
-      ("tubercule-conoide", "Tubercule conoïde", "saillie", X("inf+.6post", lat=(0.65, 0.85))),
-      ("empreinte-costo-claviculaire", "Empreinte du ligament costo-claviculaire", "depression", X("inf", lat=(0.05, 0.2)))),
+      ("tubercule-conoide", "Tubercule conoïde", "saillie", X("inf+.6post", lat=(0.6, 0.75))),
+      ("empreinte-costo-claviculaire", "Empreinte du ligament costoclaviculaire", "depression", X("inf", lat=(0.05, 0.2)))),
     B(f"{S} scapula", "scapula",
       ("acromion", "Acromion", "saillie", X("lat+.3sup+.2ant", sup=(0.8, 1))),
       ("angle-acromial", "Angle de l'acromion", "saillie", X("lat+post", sup=(0.85, 1))),
@@ -47,10 +49,11 @@ BONES = [
       ("angle-superieur", "Angle supérieur de la scapula", "saillie", X("sup+med")),
       ("angle-inferieur", "Angle inférieur de la scapula", "saillie", X("inf")),
       ("cavite-glenoidale", "Cavité glénoïdale", "articulaire", C("lat", lat=(0.82, 1), sup=(0.5, 0.85))),
-      ("fosse-supra-epineuse", "Fosse supra-épineuse", "depression", F("post", sup=(0.82, 0.95), lat=(0.25, 0.55))),
-      ("fosse-infra-epineuse", "Fosse infra-épineuse", "depression", F("post", sup=(0.3, 0.6), lat=(0.25, 0.6))),
+      ("fosse-supra-epineuse", "Fosse supra-épineuse", "depression", C("post", sup=(0.85, 0.95), lat=(0.2, 0.5))),
+      ("fosse-infra-epineuse", "Fosse infra-épineuse", "depression", C("post", sup=(0.35, 0.6), lat=(0.2, 0.5))),
       ("fosse-subscapulaire", "Fosse subscapulaire", "depression", F("ant", sup=(0.35, 0.7), lat=(0.2, 0.6))),
-      ("bord-medial", "Bord médial de la scapula", "repere", X("med", sup=(0.4, 0.6)))),
+      ("bord-medial", "Bord médial de la scapula", "repere", X("med", sup=(0.4, 0.6))),
+      ("racine-epine", "Racine de l'épine de la scapula (niveau de T3)", "repere", X("post", sup=(0.6, 0.9), lat=(0.05, 0.2)))),
     B(f"{S} humerus", "humerus", *[(slug, fr, kind, humerus_rule(slug)) for slug, (fr, kind) in META.items()],
       ("sillon-nerf-ulnaire", "Sillon du nerf ulnaire", "depression", N("@humerus.epicondyle-medial", off="8post+4lat", face="post"))),
     B(f"{S} radius", "radius",
@@ -95,7 +98,7 @@ BONES = [
       ("condyle-lateral", "Condyle latéral du tibia (plateau tibial)", "articulaire", C("sup", sup=(0.95, 1), lat=(0.6, 1))),
       ("eminence-intercondylaire", "Éminence intercondylaire du tibia", "saillie", X("sup", med=(0.35, 0.65))),
       ("tuberosite", "Tubérosité tibiale", "saillie", X("ant", sup=(0.8, 0.93))),
-      ("tubercule-gerdy", "Tubercule infracondylaire (de Gerdy)", "saillie", X("ant+lat", sup=(0.86, 0.96))),
+      ("tubercule-gerdy", "Tubercule infracondylaire (de Gerdy)", "saillie", X("lat+.5ant", sup=(0.9, 0.97), lat=(0.5, 1))),
       ("bord-anterieur", "Bord antérieur (crête tibiale)", "repere", X("ant", sup=(0.4, 0.6))),
       ("malleole-mediale", "Malléole médiale", "saillie", X("inf+med", sup=(0, 0.1))),
       ("surface-inferieure", "Surface articulaire inférieure du tibia", "articulaire", C("inf", sup=(0, 0.06), lat=(0, 0.7)))),
@@ -120,7 +123,7 @@ BONES = [
       ("eips", "Épine iliaque postéro-supérieure", "saillie", X("post+.3sup", sup=(0.55, 0.9))),
       ("epine-ischiatique", "Épine ischiatique", "saillie", X("med+.5post", sup=(0.22, 0.42), post=(0.5, 1))),
       ("tuberosite-ischiatique", "Tubérosité ischiatique", "saillie", X("inf+.5post", post=(0.5, 1))),
-      ("acetabulum", "Acétabulum", "articulaire", F("lat", sup=(0.25, 0.5), ant=(0.3, 0.8))),
+      ("acetabulum", "Fosse de l'acétabulum", "depression", F("lat", sup=(0.25, 0.5), ant=(0.3, 0.8))),
       ("tubercule-pubien", "Tubercule pubien", "saillie", X("ant+.3sup", sup=(0.05, 0.3), med=(0.6, 0.9))),
       ("surface-symphysaire", "Surface symphysaire de l'os coxal", "articulaire", X("med", sup=(0, 0.3))),
       ("surface-auriculaire", "Surface auriculaire de l'os coxal", "articulaire", C("med", sup=(0.55, 0.78), post=(0.6, 1)))),
@@ -134,7 +137,7 @@ BONES = [
     B("manubrium", "manubrium", ("incisure-claviculaire", "Incisure claviculaire du manubrium", "articulaire", X("lat+sup")), paired=True),
     B("body of sternum", "sternum",
       ("angle-sternal", "Angle sternal (niveau de la 2e côte)", "repere", X("ant", sup=(0.94, 1), lat=(0.3, 0.7)))),
-    B("xiphoid process", "xiphoide", ("pointe", "Processus xiphoïde", "saillie", X("inf"))),
+    B("xiphoid process", "xiphoide", ("pointe", "Pointe du processus xiphoïde", "saillie", X("inf"))),
     B("atlas", "c1", ("tubercule-anterieur", "Tubercule antérieur de l'atlas", "saillie", X("ant", lat=(0.4, 0.6)))),
     B("axis", "c2", ("dent", "Dent de l'axis", "saillie", X("sup"))),
     *[vertebra(n, label, p) for n, label, p in VERTEBRAE[1:]],
@@ -143,7 +146,7 @@ BONES = [
     B("occipital part of head", "occipital",
       ("protuberance-occipitale-externe", "Protubérance occipitale externe", "saillie", X("post", lat=(0.4, 0.6)))),
     B(f"{S} temporal bone", "temporal",
-      ("processus-mastoide", "Processus mastoïde", "saillie", X("inf+.3lat", post=(0.5, 1))),
+      ("processus-mastoide", "Processus mastoïde", "saillie", X("inf+.5lat+.3post", post=(0.65, 1), lat=(0.5, 1))),
       ("processus-zygomatique", "Processus zygomatique du temporal", "saillie", X("ant"))),
     B("skeleton of mouth", "mandibule", ("protuberance-mentonniere", "Protubérance mentonnière", "saillie", X("ant+.3inf", lat=(0.4, 0.6)))),
     B("skeleton of mouth", "mandibule",
@@ -161,12 +164,15 @@ BONES = [
 # Muscles: (French name of the attachment site, structures it attaches to, end of the muscle that attaches).
 MUSCLES = [
     # --- Shoulder girdle and arm ------------------------------------------------------------------------------
-    M(f"clavicular part of {S} deltoid", "deltoide-claviculaire",
-      ("Tiers latéral de la clavicule", f"{S} clavicle", "sup"), ("Tubérosité deltoïdienne", f"{S} humerus", "inf")),
-    M(f"acromial part of {S} deltoid", "deltoide-acromial",
-      ("Acromion", f"{S} scapula", "sup"), ("Tubérosité deltoïdienne", f"{S} humerus", "inf")),
-    M(f"spinal part of {S} deltoid", "deltoide-spinal",
-      ("Épine de la scapula", f"{S} scapula", "sup"), ("Tubérosité deltoïdienne", f"{S} humerus", "inf")),
+    B(f"clavicular part of {S} deltoid", "deltoide-claviculaire",
+      ("origine", "Tiers latéral de la clavicule", "origine", A(f"{S} clavicle", "sup")),
+      ("insertion", "Tubérosité deltoïdienne", "insertion", N("@humerus.tuberosite-deltoidienne"))),
+    B(f"acromial part of {S} deltoid", "deltoide-acromial",
+      ("origine", "Acromion", "origine", A(f"{S} scapula", "sup")),
+      ("insertion", "Tubérosité deltoïdienne", "insertion", N("@humerus.tuberosite-deltoidienne"))),
+    B(f"spinal part of {S} deltoid", "deltoide-spinal",
+      ("origine", "Épine de la scapula", "origine", A(f"{S} scapula", "sup")),
+      ("insertion", "Tubérosité deltoïdienne", "insertion", N("@humerus.tuberosite-deltoidienne"))),
     M(f"{S} supraspinatus", "supra-epineux",
       ("Fosse supra-épineuse", f"{S} scapula", "med"), ("Tubercule majeur, facette supérieure", f"{S} humerus", "lat")),
     M(f"{S} infraspinatus muscle", "infra-epineux",
@@ -221,9 +227,12 @@ MUSCLES = [
     M(f"transverse part of {S} trapezius", "trapeze-transverse",
       ("Processus épineux de C7 à T3", ["seventh cervical vertebra", "first thoracic vertebra", "second thoracic vertebra", "third thoracic vertebra"], "med"),
       ("Acromion et épine de la scapula", f"{S} scapula", "lat")),
+    # The ascending part ends on the tubercle at the medial end of the spine, not where the muscle first meets it.
     M(f"ascending part of {S} trapezius", "trapeze-ascendant",
       ("Processus épineux de T4 à T12", [f"{n} thoracic vertebra" for n in ("fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth")], "inf"),
-      ("Épine de la scapula (tubercule du trapèze)", f"{S} scapula", "sup")),
+      None),
+    B(f"ascending part of {S} trapezius", "trapeze-ascendant",
+      ("insertion", "Épine de la scapula (tubercule du trapèze)", "insertion", N("@scapula.racine-epine"))),
     # --- Forearm --------------------------------------------------------------------------------------------
     M(f"{S} brachioradialis", "brachioradial",
       ("Crête supracondylaire latérale", f"{S} humerus", "sup"), ("Base du processus styloïde du radius", f"{S} radius", "inf")),
@@ -238,7 +247,7 @@ MUSCLES = [
       ("Épicondyle latéral", f"{S} humerus", "sup"),
       ("Expansion dorsale du petit doigt", [f"proximal phalanx of {S} little finger", f"middle phalanx of {S} little finger"], "inf")),
     M(f"{S} extensor carpi ulnaris", "extenseur-ulnaire-carpe",
-      ("Épicondyle latéral et bord postérieur de l'ulna", [f"{S} humerus", f"{S} ulna"], "sup"), ("Base du 5e métacarpien", f"{S} fifth metacarpal bone", "inf")),
+      ("Épicondyle latéral (chef huméral)", f"{S} humerus", "sup"), ("Base du 5e métacarpien", f"{S} fifth metacarpal bone", "inf")),
     M(f"{S} supinator", "supinateur",
       ("Épicondyle latéral et crête du muscle supinateur", f"{S} ulna", None), ("Face latérale du tiers proximal du radius", f"{S} radius", None)),
     M(f"{S} abductor pollicis longus", "long-abducteur-pouce",
@@ -340,7 +349,9 @@ MUSCLES = [
     M(f"{S} semitendinosus", "semi-tendineux",
       ("Tubérosité ischiatique", f"{S} side of bony pelvis", "sup"), ("Face médiale du tibia (patte d'oie)", f"{S} tibia", "inf")),
     M(f"{S} semimembranosus", "semi-membraneux",
-      ("Tubérosité ischiatique", f"{S} side of bony pelvis", "sup"), ("Face postérieure du condyle médial du tibia", f"{S} tibia", "inf")),
+      ("Tubérosité ischiatique", f"{S} side of bony pelvis", "sup"), None),
+    B(f"{S} semimembranosus", "semi-membraneux",
+      ("insertion", "Face postéro-médiale du condyle médial du tibia", "insertion", N("@tibia.condyle-medial", off="15inf+10med+15post"))),
     M(f"long head of {S} biceps femoris", "biceps-femoral-long",
       ("Tubérosité ischiatique", f"{S} side of bony pelvis", "sup"), ("Tête de la fibula", f"{S} fibula", "inf")),
     M(f"short head of {S} biceps femoris", "biceps-femoral-court",
@@ -356,7 +367,7 @@ MUSCLES = [
     M(f"{S} plantaris", "plantaire",
       ("Crête supracondylaire latérale du fémur", f"{S} femur", "sup"), ("Tubérosité du calcanéus", f"{S} calcaneus", "inf")),
     M(f"{S} popliteus", "popliteal",
-      ("Épicondyle latéral du fémur", f"{S} femur", "sup"), ("Face postérieure du tibia, au-dessus de la ligne du soléaire", f"{S} tibia", "inf")),
+      ("Condyle latéral du fémur, sous l'épicondyle latéral", f"{S} femur", "sup"), ("Face postérieure du tibia, au-dessus de la ligne du soléaire", f"{S} tibia", "inf")),
     M(f"{S} tibialis anterior", "tibial-anterieur",
       ("Face latérale du tibia", f"{S} tibia", "sup"),
       ("Cunéiforme médial et base du 1er métatarsien", [f"{S} medial cuneiform bone", f"{S} first metatarsal bone"], "inf")),
@@ -420,13 +431,16 @@ MUSCLES = [
 VESSELS = [
     # --- Arteries: pulse points and clinical points ---------------------------------------------------------
     B(f"{S} common carotid artery", "carotide-commune",
-      ("pouls", "Pouls carotidien", "pouls", N("thyroid cartilage", face="ant")),
-      ("bifurcation", "Bifurcation carotidienne (sinus carotidien)", "clinique", X("sup"))),
+      ("pouls", "Pouls carotidien", "pouls", N("thyroid cartilage", face="ant"))),
+    # The common carotid of BodyParts3D stops below the cricoid: the bifurcation (C4, upper border of the thyroid
+    # cartilage) is the origin of the internal carotid.
+    B(f"{S} internal carotid artery", "carotide-commune",
+      ("bifurcation", "Bifurcation carotidienne (sinus carotidien)", "clinique", X("inf"))),
     B(f"{S} subclavian artery", "subclaviere", ("pouls", "Pouls subclavier (sur la 1re côte)", "pouls", N(f"{S} first rib", face="sup"))),
     B(f"{S} axillary artery", "axillaire", ("pouls", "Pouls axillaire", "pouls", N(f"{S} humerus", face="med"))),
     B(f"{S} brachial artery", "brachiale",
       ("pouls-bras", "Pouls brachial (bras, contre l'humérus)", "pouls", N(f"{S} humerus", face="med", sup=(0.3, 0.7))),
-      ("pouls-coude", "Pouls brachial (pli du coude)", "pouls", X("inf", face="ant"))),
+      ("pouls-coude", "Pouls brachial (pli du coude)", "pouls", X("inf", face="ant", sup=(0.07, 1)))),
     B(f"{S} radial artery", "radiale",
       ("pouls", "Pouls radial", "pouls", N("@radius.processus-styloide", off="20sup+10med", face="ant")),
       ("tabatiere", "Artère radiale dans la tabatière anatomique", "clinique", N(f"{S} scaphoid", face="post+lat"))),

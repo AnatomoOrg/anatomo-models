@@ -34,6 +34,13 @@ relus.
   l'app), et non « grand » et « petit tubercule ». « Grand trochanter » et « petit trochanter » restent
   d'usage courant et sont gardés.
 - Os du carpe : Scaphoïde, Lunatum, Triquétrum, Pisiforme, Trapèze (os), Trapézoïde, Capitatum, Hamatum.
+  Os du tarse : Talus, Calcanéus, Os naviculaire, Os cuboïde, Os cunéiforme médial / intermédiaire / latéral.
+- Muscles de l'œil : « de l'œil » dans le nom (« Muscle oblique supérieur de l'œil »), le modèle ayant aussi
+  des muscles obliques et droits de la tête.
+- Séries segmentaires (rotateurs, interépineux, intertransversaires) : au pluriel, comme la TA.
+- Le côté reste aussi dans le nom des veines pulmonaires et des veines intercostales supérieures (entrées
+  distinctes de la TA ; terminaisons différentes à droite et à gauche).
+- Lombaires : « processus costiforme » (et non « transverse ») pour les repères de L1 à L5.
 
 ## Maillages rattachés à un concept plus large
 
@@ -66,6 +73,12 @@ retenu, pour ne pas changer les identifiants ; **le nom français décrit ce que
 | FMA86056 | myocardial zone 4 | posterior leaflet of mitral valve | Cuspide postérieure de la valve mitrale |
 | FMA86064 | myocardial zone 12 | anterolateral head of lateral papillary muscle of left ventricle | Muscle papillaire antérieur du ventricule gauche |
 | FMA85123, FMA85124 | fourth common palmar digital artery (on n'en décrit classiquement que trois) | medial proper palmar digital artery of little finger : le maillage longe le bord ulnaire du petit doigt jusqu'à la pulpe | Artère digitale palmaire propre médiale du petit doigt |
+| FMA22954 | dorsal metacarpal vein | dorsal metatarsal veins : le maillage est sur les deux pieds, aucun morceau sur la main | Veines métatarsiennes dorsales |
+| FMA8620 | right anterior segmental artery (poumon) | anterior segmental artery of kidney : le maillage est dans le rein droit, parmi les artères segmentaires rénales | Artère segmentaire antérieure du rein |
+| FMA4771, FMA4785 | right / left superior epigastric vein | superficial epigastric vein : même maillage que FMA44340 / FMA44341, sous l'ombilic | Veine épigastrique superficielle |
+| FMA49214 | wall of inflow part of left ventricle | posterior papillary muscle of left ventricle : même maillage que FMA7266 | Muscle papillaire postérieur du ventricule gauche |
+| FMA71889, FMA76903 | caudate tributary of left hepatic bile duct / left duct of caudate lobe | un seul et même maillage | Conduit biliaire gauche du lobe caudé |
+| FMA13884 | wall of ventricle | myocarde des deux ventricules | Paroi des ventricules (myocarde ventriculaire) |
 
 Le format n'a pas de champ de synonymes : les anciens noms courants sont indiqués entre parenthèses
 dans ce tableau seulement (muscle de la luette pour le muscle de l'uvule).
@@ -97,6 +110,8 @@ Les noms sources qui semblent erronés sont traduits tels quels.
 | celiac artery / celiac trunk, marginal artery (×2) | Tronc cœliaque, Artère marginale du côlon | Même maillage en double dans la source |
 | posterior part of pelvis | Sacrum et coccyx | Le fichier source est rattaché au sacrum ; la hauteur du maillage (14 cm) et le repère « Apex du coccyx » laissent penser qu'il contient aussi le coccyx |
 | intervertebral disk | Disque intervertébral T12-L1 | Concept générique ; T12-L1 d'après la position du maillage |
+| set of calcaneal branches of posterior tibial artery (FMA71562) | Rameaux de l'artère circonflexe fémorale latérale | Le maillage n'est pas au talon mais à la racine de la cuisse, au contact de l'artère circonflexe fémorale latérale et en dehors d'elle ; identité exacte non établie. L'app ne le pose pas en quiz |
+| hepatic segments VII et IX (FMA15745, FMA15747) | Segment hépatique VII, IX | Leurs maillages recouvrent ceux des segments VI et VIII ; l'app ne les pose pas en quiz |
 | myocardial zone 12 | Muscle papillaire antérieur du ventricule gauche | Le muscle papillaire « latéral » de la FMA correspond au muscle papillaire antérieur de la TA |
 
 ## Nerfs du membre supérieur (Open3DModel)
