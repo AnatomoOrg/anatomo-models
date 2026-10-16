@@ -62,8 +62,10 @@ def decimate(mesh, target):
     return clean(trimesh.Trimesh(v, f, process=True))
 
 
-def build(structures, glb_path, manifest_path, model, version, sources):
-    """structures: list of dicts {id, en, fr, system, mesh (trimesh, BodyParts3D frame, mm), source}."""
+def build(structures, glb_path, manifest_path, model, version, sources, license=LICENSE, attribution=ATTRIBUTION):
+    """structures: list of dicts {id, en, fr, system, mesh (trimesh, BodyParts3D frame, mm), source}.
+
+    license ({id, url}) and attribution apply to the whole model (glb asset and manifest)."""
     by_system = {s: sorted((x for x in structures if x["system"] == s), key=lambda x: x["id"]) for s in SYSTEMS}
     assert all(x["system"] in SYSTEMS for x in structures), "unknown system"
     ids = [x["id"] for x in structures]
@@ -90,12 +92,12 @@ def build(structures, glb_path, manifest_path, model, version, sources):
         primitives.append({"name": system, "positions": np.concatenate(pos), "normals": np.concatenate(nrm),
                            "structure": np.concatenate(sid), "indices": np.concatenate(idx), "color": color})
         systems.append({"key": system, "node": system, "vertices": nv, "triangles": nt, "structures": len(items)})
-    write_glb(glb_path, primitives, copyright=ATTRIBUTION,
-              extras={"format": FORMAT, "model": model, "version": version, "license": LICENSE})
+    write_glb(glb_path, primitives, copyright=attribution,
+              extras={"format": FORMAT, "model": model, "version": version, "license": license})
     manifest = {
         "format": FORMAT, "model": model, "version": version, "glb": glb_path.rsplit("/", 1)[-1],
         "frame": {"units": "m", "up": "+Y", "anterior": "+Z", "subject_left": "+X"},
-        "license": LICENSE, "attribution": ATTRIBUTION, "sources": sources,
+        "license": license, "attribution": attribution, "sources": sources,
         "systems": systems, "structures": entries,
     }
     with open(manifest_path, "w", encoding="utf-8") as f:
