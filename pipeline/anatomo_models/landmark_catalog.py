@@ -49,7 +49,7 @@ BONES = [
       ("angle-superieur", "Angle supérieur de la scapula", "saillie", X("sup+med")),
       ("angle-inferieur", "Angle inférieur de la scapula", "saillie", X("inf")),
       ("cavite-glenoidale", "Cavité glénoïdale", "articulaire", C("lat", lat=(0.82, 1), sup=(0.5, 0.85))),
-      ("fosse-supra-epineuse", "Fosse supra-épineuse", "depression", C("post", sup=(0.85, 0.95), lat=(0.2, 0.5))),
+      ("fosse-supra-epineuse", "Fosse supra-épineuse", "depression", N("@scapula.epine", off="20sup+25ant", face="post")),
       ("fosse-infra-epineuse", "Fosse infra-épineuse", "depression", C("post", sup=(0.35, 0.6), lat=(0.2, 0.5))),
       ("fosse-subscapulaire", "Fosse subscapulaire", "depression", F("ant", sup=(0.35, 0.7), lat=(0.2, 0.6))),
       ("bord-medial", "Bord médial de la scapula", "repere", X("med", sup=(0.4, 0.6))),
