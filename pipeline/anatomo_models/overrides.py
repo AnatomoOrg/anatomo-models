@@ -11,7 +11,8 @@ Conventions for the cases the format has no system for (see docs/FORMAT.md, "Sys
   skull in atlases);
 - organes: everything that is not otherwise classified, including cartilages outside the ribs (larynx,
   nose), intervertebral discs, ligaments and membranes;
-- muscles: muscles and their tendinous parts (tendons, aponeuroses, raphes, retinacula, tendinous rings);
+- muscles: muscles and their tendinous parts (tendons, aponeuroses, raphes, retinacula, tendinous rings), including
+  the linea alba and the inguinal ligament (external oblique aponeurosis; set in full_body.V3_ADDITIONS);
 - peau: skin and its appendages (hair).
 """
 from .model import SYSTEMS

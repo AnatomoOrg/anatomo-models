@@ -31,7 +31,7 @@ anatomique. L'ordre des nœuds suit l'ordre d'affichage : `os`, `muscles`, `arte
 | `arteres` | Artères |
 | `veines` | Veines |
 | `nerfs` | Nerfs et ganglions (BodyParts3D n'a que des nerfs crâniens ; nerfs du membre supérieur de `upper_limb` : Open3DModel) |
-| `organes` | Tout le reste : viscères, encéphale, cœur (y compris ses muscles papillaires), cartilages hors côtes (larynx, nez), disques intervertébraux, ligaments et membranes |
+| `organes` | Tout le reste : viscères, encéphale, cœur (y compris ses muscles papillaires), cartilages hors côtes (larynx, nez), disques intervertébraux, ligaments et membranes (sauf le ligament inguinal, partie de l'aponévrose de l'oblique externe, rangé en `muscles` comme la ligne blanche) |
 | `peau` | Peau et phanères (cheveux, sourcils, poils pubiens) |
 
 Le système vient du classement BodyParts3D/FMA (arbre is-a, noms anglais en secours). Les structures que ce

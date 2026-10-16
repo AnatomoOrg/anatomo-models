@@ -69,7 +69,7 @@ BONES = [
       ("tete", "Tête de l'ulna", "articulaire", X("lat+.5ant", sup=(0.02, 0.08))),
       ("bord-posterieur", "Bord postérieur de l'ulna (sous-cutané)", "repere", X("post", sup=(0.4, 0.6)))),
     B(f"{S} scaphoid", "scaphoide", ("tubercule", "Tubercule du scaphoïde", "saillie", X("ant+.3lat"))),
-    B(f"{S} trapezium", "trapeze", ("tubercule", "Tubercule du trapèze", "saillie", X("ant"))),
+    B(f"{S} trapezium", "trapeze", ("tubercule", "Tubercule de l'os trapèze", "saillie", X("ant"))),
     B(f"{S} hamate", "hamatum", ("hamulus", "Hamulus de l'hamatum", "saillie", X("ant"))),
     B(f"{S} pisiform", "pisiforme", ("pisiforme", "Pisiforme (palpable)", "repere", X("ant"))),
     # --- Lower limb -------------------------------------------------------------------------------------------
@@ -274,11 +274,11 @@ MUSCLES = [
       ("Quart distal de la face antérieure de l'ulna", f"{S} ulna", None), ("Quart distal de la face antérieure du radius", f"{S} radius", None)),
     # --- Hand ---------------------------------------------------------------------------------------------
     M(f"{S} abductor pollicis brevis", "court-abducteur-pouce",
-      ("Tubercules du scaphoïde et du trapèze", [f"{S} scaphoid", f"{S} trapezium"], "sup"), ("Base de la phalange proximale du pouce", f"proximal phalanx of {S} thumb", "inf")),
+      ("Tubercules du scaphoïde et de l'os trapèze", [f"{S} scaphoid", f"{S} trapezium"], "sup"), ("Base de la phalange proximale du pouce", f"proximal phalanx of {S} thumb", "inf")),
     M(f"superficial head of {S} flexor pollicis brevis", "court-flechisseur-pouce",
-      ("Rétinaculum des fléchisseurs et trapèze", f"{S} trapezium", "sup"), ("Base de la phalange proximale du pouce", f"proximal phalanx of {S} thumb", "inf")),
+      ("Rétinaculum des fléchisseurs et os trapèze", f"{S} trapezium", "sup"), ("Base de la phalange proximale du pouce", f"proximal phalanx of {S} thumb", "inf")),
     M(f"{S} opponens pollicis", "opposant-pouce",
-      ("Tubercule du trapèze", f"{S} trapezium", "sup"), ("Bord latéral du 1er métacarpien", f"{S} first metacarpal bone", "inf")),
+      ("Tubercule de l'os trapèze", f"{S} trapezium", "sup"), ("Bord latéral du 1er métacarpien", f"{S} first metacarpal bone", "inf")),
     M(f"oblique head of {S} adductor pollicis", "adducteur-pouce-oblique",
       ("Capitatum et bases des 2e et 3e métacarpiens", [f"{S} capitate", f"{S} second metacarpal bone", f"{S} third metacarpal bone"], "sup"),
       ("Base de la phalange proximale du pouce", f"proximal phalanx of {S} thumb", "inf")),

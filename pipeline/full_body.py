@@ -56,7 +56,9 @@ V3_ADDITIONS = {
     "FMA22346": _M, "FMA22347": _M,  # pyramidalis
     "FMA22348": _M, "FMA22349": _M,  # quadratus lumborum
     "FMA22878": _M, "FMA22879": _M,  # multifidus
-    "FMA21964": "organes", "FMA21965": "organes",  # inguinal ligament (ligaments go to organes, see overrides.py)
+    # Inguinal ligament: the lower border of the external oblique aponeurosis, a tendinous part of muscles
+    # like the linea alba (see the conventions of overrides.py).
+    "FMA21964": _M, "FMA21965": _M,
     # Foot
     "FMA51142": _M, "FMA51143": _M,  # extensor digitorum brevis
     "FMA74140": _M, "FMA74141": _M,  # set of dorsal interossei of foot

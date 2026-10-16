@@ -312,7 +312,7 @@
 "FMA59665":"Vomer",
 "FMA59671":"Cornet nasal inférieur",
 "FMA59672":"Cornet nasal inférieur",
-"FMA59838":"Cartilage septal du nez",
+"FMA59838":"Cartilage du septum nasal",
 "FMA61670":"Mandibule",
 "FMA65470":"Phalange proximale du pouce",
 "FMA66791":"Phalange proximale du petit doigt",
@@ -698,7 +698,7 @@
 "FMA51144":"Muscle court extenseur de l'hallux",
 "FMA51145":"Muscle court extenseur de l'hallux",
 "FMA54159":"Tendon du muscle élévateur de la paupière supérieure",
-"FMA59992":"Muscle de la luette",
+"FMA59992":"Muscle de l'uvule",
 "FMA65014":"Muscle long fléchisseur de l'hallux",
 "FMA65015":"Muscle long fléchisseur de l'hallux",
 "FMA65016":"Muscle long fléchisseur des orteils",
@@ -1648,7 +1648,7 @@
 "FMA83740":"Fosse interpédonculaire",
 "FMA83966":"Tente du cervelet",
 "FMA86056":"Cuspide postérieure de la valve mitrale",
-"FMA86064":"Muscle papillaire antérieur du ventricule gauche, chef antérolatéral",
+"FMA86064":"Muscle papillaire antérieur du ventricule gauche",
 "FMA86464":"Corps calleux",
 "FMA9291":"Cavité du ventricule droit",
 "FMA9457":"Paroi de l'atrium droit",
@@ -1733,5 +1733,6 @@
 "FMA74140":"Muscles interosseux dorsaux du pied",
 "FMA74141":"Muscles interosseux dorsaux du pied",
 "FMA7266":"Muscle papillaire postérieur du ventricule gauche",
-"FMA46110":"Muscle court fléchisseur du pouce, chef profond"
+"FMA46110":"Muscle court fléchisseur du pouce, chef profond",
+"FMA72979":"Peau"
 }

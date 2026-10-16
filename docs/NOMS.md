@@ -1,7 +1,7 @@
 # Noms français des structures
 
 `data/fr_names.json` associe à chaque FMA ID le nom français affiché dans l'app. Il couvre toutes
-les structures des modèles, sauf la peau (`integumentary system`). Les noms ont été traduits depuis
+les structures des modèles, y compris la peau (`integumentary system`, « Peau »). Les noms ont été traduits depuis
 les noms anglais de BodyParts3D, puis relus par des agents indépendants. Aucun anatomiste ne les a
 relus.
 
@@ -51,9 +51,9 @@ retenu, pour ne pas changer les identifiants ; **le nom français décrit ce que
 | FMA24228 | posterior part of pelvis | sacrum | Sacrum et coccyx |
 | FMA59665 | septum of internal nose | vomer | Vomer |
 | FMA59671, FMA59672 | lateral wall of internal nose | inferior nasal concha | Cornet nasal inférieur |
-| FMA59838 | cartilaginous part of nasal septum | septal nasal cartilage | Cartilage septal du nez |
+| FMA59838 | cartilaginous part of nasal septum | septal nasal cartilage | Cartilage du septum nasal |
 | FMA54397, FMA54398 | upper jaw / lower jaw | gingiva of upper / lower jaw | Gencive supérieure / inférieure |
-| FMA59992 | faucial part of mouth | uvular muscle | Muscle de la luette |
+| FMA59992 | faucial part of mouth | uvular muscle | Muscle de l'uvule (ancien nom : muscle de la luette) |
 | FMA50071 | right lateral superficial chest wall | right serratus anterior | Muscle dentelé antérieur |
 | FMA58406 | investing fascia of left free upper limb | flexor retinaculum of left wrist | Rétinaculum des fléchisseurs du poignet |
 | FMA58100, FMA58107 | wall of left eyeball, vascular layer of right eyeball | choroid | Choroïde |
@@ -64,7 +64,22 @@ retenu, pour ne pas changer les identifiants ; **le nom français décrit ce que
 | FMA7376, FMA7377 | left superior / medial basal bronchopulmonary segment | left superior / medial basal segmental artery | Artère segmentaire supérieure / basale médiale |
 | FMA7365, FMA7386 | right medial basal / left posterior bronchopulmonary segment | segmental veins | Veine segmentaire basale médiale / postérieure |
 | FMA86056 | myocardial zone 4 | posterior leaflet of mitral valve | Cuspide postérieure de la valve mitrale |
-| FMA86064 | myocardial zone 12 | anterolateral head of lateral papillary muscle of left ventricle | Muscle papillaire antérieur du ventricule gauche, chef antérolatéral |
+| FMA86064 | myocardial zone 12 | anterolateral head of lateral papillary muscle of left ventricle | Muscle papillaire antérieur du ventricule gauche |
+
+Le format n'a pas de champ de synonymes : les anciens noms courants sont indiqués entre parenthèses
+dans ce tableau seulement (muscle de la luette pour le muscle de l'uvule).
+
+### Identifiants à connaître
+
+- **FMA58406** : le rétinaculum des fléchisseurs du poignet gauche (`full_body`) garde l'identifiant et
+  le nom anglais du concept qui possède le fichier source, `investing fascia of left free upper limb`,
+  alors que le maillage est le rétinaculum. L'ID et le nom anglais restent stables d'une version à
+  l'autre ; seul le nom français décrit le maillage. Son homologue droit est `FMA40120` (`flexor
+  retinaculum of right wrist`) ; le concept gauche propre de la FMA (`FMA40121`) n'est pas utilisé.
+- **Dentelé antérieur droit** : `FMA50071` (`right lateral superficial chest wall`, maillage 4.0) dans
+  `full_body`, `FMA13398` (`right serratus anterior`, maillage 3.0) dans `upper_limb`. Une app qui relie
+  les deux modèles ne peut donc pas se fier au seul FMA ID pour cette structure ; le gauche est
+  `FMA13399` dans `full_body`.
 
 ## Points incertains
 
@@ -82,7 +97,7 @@ Les noms sources qui semblent erronés sont traduits tels quels.
 | celiac artery / celiac trunk, marginal artery (×2) | Tronc cœliaque, Artère marginale du côlon | Même maillage en double dans la source |
 | posterior part of pelvis | Sacrum et coccyx | Le fichier source est rattaché au sacrum ; la hauteur du maillage (14 cm) et le repère « Apex du coccyx » laissent penser qu'il contient aussi le coccyx |
 | intervertebral disk | Disque intervertébral T12-L1 | Concept générique ; T12-L1 d'après la position du maillage |
-| myocardial zone 12 | Muscle papillaire antérieur du ventricule gauche, chef antérolatéral | Le muscle papillaire « latéral » de la FMA correspond au muscle papillaire antérieur de la TA |
+| myocardial zone 12 | Muscle papillaire antérieur du ventricule gauche | Le muscle papillaire « latéral » de la FMA correspond au muscle papillaire antérieur de la TA |
 
 ## Nerfs du membre supérieur (Open3DModel)
 
