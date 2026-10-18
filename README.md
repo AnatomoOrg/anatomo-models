@@ -100,7 +100,10 @@ Aucune copie binaire n'est gardée dans git.
   dépasse 4 mm. Décimation 50 % (environ 99 000 triangles pour les nerfs).
 - Fusion des sommets dupliqués avant décimation (sinon la décimation ouvre des trous), puis
   décimation : 20 % pour le membre supérieur (minimum 3 000 triangles par structure, environ
-  610 000 hors nerfs, 708 000 avec les nerfs), environ 1,5 M triangles pour le corps entier.
+  610 000 hors nerfs, 708 000 avec les nerfs), environ 1,75 M triangles pour le corps entier : 20 %
+  (minimum 200 triangles) sauf les artères, veines et nerfs, gardés à 25 % (minimum 600 triangles,
+  environ 620 000 triangles) parce qu'à 200 triangles les petites artères perdaient jusqu'à 3 mm de
+  leur extrémité et les gros troncs devenaient anguleux.
 - Chaque fichier élément de BodyParts3D est rattaché à son concept FMA le plus spécifique (dans
   les arbres is-a et part-of).
 - Le build échoue si les maillages 3.0 manquent (pas de repli silencieux sur la 4.0) ; un concept
@@ -135,6 +138,14 @@ Aucune copie binaire n'est gardée dans git.
   pubiens, qui formaient une couche rose par-dessus la peau, sont maintenant dans le système `peau`. La
   peau n'est pas gonflée au build : la décaler le long de ses normales déplacerait aussi sa surface
   interne et rétrécirait les orifices (paupières, narines, lèvres).
+- **Vaisseaux absents de BodyParts3D** (`full_body`) : des segments manquent dans la source, ce qui
+  interrompt l'arbre vasculaire : carotide commune → carotide interne (6 cm), subclavière → artère
+  vertébrale (segments V1-V2, 5 cm), veine poplitée → veine tibiale postérieure (3,5 cm) ; la jugulaire
+  interne ne mesure que 4 cm ; il n'y a ni carotide externe ni ses branches, ni jugulaires externe et
+  antérieure, ni veines faciale et vertébrale, ni sinus de la dure-mère ni veines cérébrales. Les grands
+  vaisseaux aboutissent au cœur, rangé dans `organes`. Les jonctions présentes dans la source restent
+  fermées : `check.py` mesure la distance entre les surfaces de 81 paires parent → branche, de l'aorte
+  et des veines caves aux membres (`pipeline/anatomo_models/junctions.py`), et échoue au-delà de 1 mm.
 - Les **noms français** (`data/fr_names.json`) couvrent toutes les structures. Ils
   ont été traduits puis relus par des agents, sans relecture humaine, et ne portent pas le côté
   (sauf quand il fait partie du nom). Conventions et points incertains :

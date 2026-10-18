@@ -2,7 +2,7 @@
 plus the 3.0 concepts listed in V3_ADDITIONS (muscles missing from 4.0).
 
 System from the is-a tree (ancestor 'muscle organ', 'artery'...), English names as a fallback.
-Uniform decimation to about TARGET triangles; small parts keep MIN_TRIS.
+Uniform decimation to about TARGET triangles; small parts keep MIN_TRIS; vessels and nerves are decimated less (TUBES).
 """
 import collections
 import re
@@ -11,8 +11,13 @@ import trimesh
 
 from anatomo_models import v3
 from anatomo_models.model import clean, decimate
+from anatomo_models.overrides import SYSTEM_OVERRIDES
 
 TARGET, MIN_TRIS = 1_500_000, 200
+# Vessels and nerves are thin tubes: at the uniform ratio (about 0.2) and 200 triangles, quadric decimation shortened
+# the thin branches by up to 3 mm (cerebral arteries) and flattened the large trunks (aorta, femoral vessels). They
+# keep at least TUBE_KEEP of their triangles and TUBE_MIN_TRIS: about 620 000 triangles instead of 420 000.
+TUBES, TUBE_KEEP, TUBE_MIN_TRIS = {"arteres", "veines", "nerfs"}, 0.25, 600
 
 # Concepts that BodyParts3D 4.0 lacks and 3.0 has (face, mastication and abdominal wall muscles, latissimus
 # dorsi...), with their system. Their whole 3.0 mesh is moved into the 4.0 frame by the displacement field of
@@ -66,6 +71,16 @@ V3_ADDITIONS = {
     "FMA7266": "organes",  # posterior papillary muscle of left ventricle
 }
 
+# Element files that BodyParts3D attaches both to a segmental pulmonary vessel and to the lung segment it supplies
+# or drains (an organ region): the two concepts tie in most_specific_owner and the segment wins on its smaller id,
+# so the vessel was published as '... bronchopulmonary segment'. Owner -> concept of the mesh.
+OWNER_FIXES = {
+    "FMA7365": "FMA9422",  # right medial basal bronchopulmonary segment -> right medial basal segmental vein
+    "FMA7386": "FMA9438",  # left posterior bronchopulmonary segment -> left posterior segmental vein
+    "FMA7376": "FMA8642",  # left superior bronchopulmonary segment -> left superior segmental artery
+    "FMA7377": "FMA8644",  # left medial basal bronchopulmonary segment -> left medial basal segmental artery
+}
+
 ROOTS = {"FMA72979": "peau", "FMA65132": "nerfs", "FMA50720": "arteres", "FMA50723": "veines",
          "FMA5022": "muscles", "FMA10474": "muscles", "FMA85453": "muscles", "FMA5018": "os", "FMA55107": "os"}
 # FMA10474 'zone of muscle organ' (acromial part of deltoid...), FMA85453 'head of muscle organ' (long head of biceps...).
@@ -112,7 +127,12 @@ def swap_sides(bp, meshes):
 def structures(bp, fr_names, target=TARGET, additions=V3_ADDITIONS):
     groups = collections.defaultdict(list)
     for fid in sorted(bp.files):
-        groups[bp.most_specific_owner(fid) or fid].append(fid)
+        owner = bp.most_specific_owner(fid) or fid
+        if owner in OWNER_FIXES:
+            owner = OWNER_FIXES[owner]
+            if owner not in bp.owners[fid]:
+                raise SystemExit(f"OWNER_FIXES: {fid} is not a file of {owner} ({bp.names.get(owner)})")
+        groups[owner].append(fid)
     meshes = {}
     for key, fids in groups.items():
         m = clean(trimesh.util.concatenate([bp.load_v4(f) for f in fids]))
@@ -136,7 +156,12 @@ def structures(bp, fr_names, target=TARGET, additions=V3_ADDITIONS):
             concepts = [key] + sorted({c for f in groups[key] for c in bp.owners.get(f, [])} - {key})
             name = bp.names.get(key, key)
             sys_, source = system(bp, concepts, name), "bodyparts3d-4.0"
+        # The system the structure ends up in (build.py applies SYSTEM_OVERRIDES after this function).
+        if SYSTEM_OVERRIDES.get(key, (sys_,))[0] in TUBES:
+            tris = max(TUBE_MIN_TRIS, len(m.faces) * max(keep, TUBE_KEEP))
+        else:
+            tris = max(MIN_TRIS, len(m.faces) * keep)
         # `src` (full resolution) is only used to place the landmarks.
         out.append(dict(id=key, en=name, fr=fr_names.get(key), system=sys_,
-                        mesh=decimate(m, max(MIN_TRIS, len(m.faces) * keep)), src=m, source=source))
+                        mesh=decimate(m, tris), src=m, source=source))
     return out
