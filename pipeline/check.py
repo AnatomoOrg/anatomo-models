@@ -29,6 +29,11 @@ def check(manifest_path):
         sid, tri = n["_STRUCTURE"], n["indices"]
         assert len(n["POSITION"]) == len(sid) == sys_["vertices"] and len(tri) == sys_["triangles"]
         assert np.all(np.isfinite(n["POSITION"])) and np.allclose(np.linalg.norm(n["NORMAL"], axis=1), 1, atol=1e-3)
+        if "_FIBER" in n or "_TENDON" in n:  # optional, muscles only
+            assert sys_["key"] == "muscles" and "_FIBER" in n and "_TENDON" in n, sys_["key"]
+            assert len(n["_FIBER"]) == len(n["_TENDON"]) == len(sid)
+            assert np.allclose(np.linalg.norm(n["_FIBER"], axis=1), 1, atol=0.02)
+            assert n["_TENDON"].min() >= 0 and n["_TENDON"].max() <= 1
         mine = [s for s in m["structures"] if s["system"] == sys_["key"]]
         assert len(mine) == sys_["structures"]
         v_end = t_end = 0

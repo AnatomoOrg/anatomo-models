@@ -46,6 +46,42 @@ Attributs de sommet :
 | `POSITION` | `position` | `vec3` float | Position (m) |
 | `NORMAL` | `normal` | `vec3` float | Normale lissée, par structure |
 | `_STRUCTURE` | `_structure` | `float` | Indice de la structure dans le manifeste (entier exact) |
+| `_FIBER` | `_fiber` | `vec3` byte normalisé | Direction des fibres musculaires (unitaire, tangente à la surface lissée, sans sens) ; `muscles` seulement, optionnel |
+| `_TENDON` | `_tendon` | `float` (ubyte normalisé) | Masque tendon : 0 = charnu, 1 = tendon ; `muscles` seulement, optionnel |
+
+### Fibres et tendons (`_FIBER`, `_TENDON`, optionnels)
+
+Le maillage `muscles` peut porter deux attributs de plus, pour dessiner des fibres et des tendons procéduraux
+sans texture ni UV (stries dans le sens de `_FIBER`, éclaircissement nacré là où `_TENDON` est élevé). Ils sont
+optionnels et ajoutés sans changer le format : un lecteur qui les ignore lit le fichier comme avant, et l'app
+doit rendre normalement un modèle qui ne les a pas (versions antérieures).
+
+- `_FIBER` : accessor `VEC3`, `BYTE` normalisé (`normalized: true`, composante / 127), dans son propre
+  bufferView avec `byteStride` 4 (un octet de bourrage par sommet). Vecteur unitaire à la quantification près ;
+  son signe n'a pas de sens (une fibre n'a pas d'orientation).
+- `_TENDON` : accessor `SCALAR`, `UNSIGNED_BYTE` normalisé (valeur / 255), bufferView avec `byteStride` 4.
+
+Coût : 8 octets par sommet du maillage `muscles` (+1,7 Mo pour `upper_limb`, +2,7 Mo pour `full_body`).
+
+Les deux sont calculés géométriquement par le pipeline (`pipeline/anatomo_models/fibers.py`), sur le maillage
+publié de chaque structure :
+
+- **direction** : champ qui court sur la surface de l'origine du muscle à son insertion. Les extrémités sont les
+  repères `origine` et `insertion` du muscle quand il a les deux (les sommets autour d'eux, et ceux qui touchent un
+  os près d'eux : une attache est une surface, pas un point), sinon les deux bouts de la structure le long de son
+  axe principal (ACP), le plus étroit jouant l'insertion. Depuis chaque extrémité, une diffusion de chaleur sur la
+  surface (Laplacien cotangent, méthode de la chaleur) donne la direction des géodésiques qui en partent ; la fibre
+  suit leur différence, pondérée vers l'insertion. Le champ suit les muscles courbes et converge vers l'insertion
+  des muscles en éventail (grand pectoral, deltoïde, grand dorsal). Il est moyenné sur environ 1 cm et tangent à
+  la surface lissée (à quelques degrés près de `NORMAL`, qui suit le relief sculpté des maillages) ;
+- **tendon** : parties de la structure nettement plus fines que son corps (épaisseur locale, mesurée là où la
+  normale rentrante franchit l'axe médian) et de moins de 5 mm environ, dans les structures de plus de 5 à 9 cm
+  (les petits muscles de la face, du cou profond ou du pied restent charnus). Les structures entièrement
+  tendineuses (tendons, aponévroses, raphés, rétinaculums, ligne blanche, tractus iliotibial, ligament inguinal,
+  anneau tendineux commun) valent 1 partout.
+
+BodyParts3D ne sépare presque jamais le tendon du corps charnu : le masque est une estimation, à ne pas
+présenter comme une limite anatomique.
 
 Dans un maillage de système, les structures sont posées les unes après les autres (triées par
 identifiant) : chacune occupe une plage **contiguë** de sommets et de triangles, et aucun sommet
@@ -182,3 +218,6 @@ Jusqu'à la v1.0.0, seul `upper_limb` avait des repères (12, sur l'humérus) et
 - **Masquer beaucoup de structures** : `geometry.setDrawRange` ou des groupes construits à partir
   des plages `triangles`, puisque les structures sont contiguës.
 - **Cadrage sur une structure** : `bbox`.
+- **Fibres** : si `geometry.attributes._fiber` existe, three.js le lit normalisé (`vec3` dans [-1, 1]) et
+  `_tendon` comme un `float` dans [0, 1] ; les positions sont en mètres dans l'espace objet, ce qui fixe la
+  fréquence d'un bruit procédural.
