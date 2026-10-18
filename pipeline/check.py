@@ -11,6 +11,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from anatomo_models.glb import read_glb  # noqa: E402
+from anatomo_models.junctions import JUNCTIONS, MAX_GAP, mesh_distance  # noqa: E402
 from anatomo_models.landmarks import KINDS  # noqa: E402
 
 
@@ -29,6 +30,11 @@ def check(manifest_path):
         sid, tri = n["_STRUCTURE"], n["indices"]
         assert len(n["POSITION"]) == len(sid) == sys_["vertices"] and len(tri) == sys_["triangles"]
         assert np.all(np.isfinite(n["POSITION"])) and np.allclose(np.linalg.norm(n["NORMAL"], axis=1), 1, atol=1e-3)
+        if "_FIBER" in n or "_TENDON" in n:  # optional, muscles only
+            assert sys_["key"] == "muscles" and "_FIBER" in n and "_TENDON" in n, sys_["key"]
+            assert len(n["_FIBER"]) == len(n["_TENDON"]) == len(sid)
+            assert np.allclose(np.linalg.norm(n["_FIBER"], axis=1), 1, atol=0.02)
+            assert n["_TENDON"].min() >= 0 and n["_TENDON"].max() <= 1
         mine = [s for s in m["structures"] if s["system"] == sys_["key"]]
         assert len(mine) == sys_["structures"]
         v_end = t_end = 0
@@ -45,8 +51,31 @@ def check(manifest_path):
     tris = sum(s["triangles"] for s in m["systems"])
     missing_fr = sum(s["fr"] is None for s in m["structures"])
     marks = check_landmarks(m, manifest_path.removesuffix(".json") + ".landmarks.json")
+    worst = check_junctions(m, nodes, JUNCTIONS.get(m["model"], []))
     print(f"{manifest_path}: OK ({len(m['structures'])} structures, {tris} triangles, "
-          f"{len(nodes)} meshes, {missing_fr} without French name, {marks} landmarks)")
+          f"{len(nodes)} meshes, {missing_fr} without French name, {marks} landmarks, "
+          f"{len(JUNCTIONS.get(m['model'], []))} vascular junctions, widest {worst:.2f} mm)")
+
+
+def structure_mesh(s, nodes):
+    """Vertices (mm) and faces of one structure of the glb."""
+    n = nodes[s["system"]]
+    (v0, vn), (t0, tn) = s["vertices"], s["triangles"]
+    return n["POSITION"][v0:v0 + vn].astype(float) * 1000, n["indices"][t0:t0 + tn].reshape(-1, 3) - v0
+
+
+def check_junctions(m, nodes, junctions, max_gap=MAX_GAP):
+    """Parent -> branch pairs that touch in the source stay within `max_gap` mm of each other. Returns the widest."""
+    by_id = {s["id"]: s for s in m["structures"]}
+    worst, failed = 0.0, []
+    for parent, branch in junctions:
+        assert parent in by_id and branch in by_id, f"junction {parent} -> {branch}: structure missing from the model"
+        d = mesh_distance(*structure_mesh(by_id[parent], nodes), *structure_mesh(by_id[branch], nodes))
+        worst = max(worst, d)
+        if d >= max_gap:
+            failed.append(f"{by_id[parent]['en']} -> {by_id[branch]['en']}: {d:.2f} mm")
+    assert not failed, f"vascular junctions open (>= {max_gap} mm): {failed}"
+    return worst
 
 
 def check_landmarks(m, path):

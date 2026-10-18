@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Download the Open3DModel upper-limb geometry (OBJ, about 21 MB, CC BY-SA 4.0) into DIR, checking its
-# SHA-256, and unpack upper-limb.obj. Only the OBJ export is fetched: it has no materials nor textures.
+# Download the Open3DModel upper- and lower-limb geometry (OBJ, about 21 and 20 MB, CC BY-SA 4.0) into DIR,
+# checking their SHA-256, and unpack upper-limb.obj and lower-limb.obj. Only the OBJ exports are fetched: they
+# have no materials nor textures.
 # The textures of the Blender and glb exports are CC BY-NC-SA: never download nor use them.
 #
 # The upstream URL is not versioned (AnatomyTOOL replaces the file in place), so each release of this
@@ -46,5 +47,5 @@ while read -r sum path; do
   [ -z "$bad" ] || { echo "$f: unexpected non-OBJ content: $bad" >&2; exit 1; }
   unzip -q -o "$f" '*.obj'
 done < "$HERE/open3d.sha256"
-test -f upper-limb.obj
+test -f upper-limb.obj && test -f lower-limb.obj
 echo "Open3DModel ready in $DIR"

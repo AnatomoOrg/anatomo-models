@@ -50,12 +50,12 @@ def test_nerve_ids_do_not_clash_with_bodyparts3d_structures():
 def test_licence_per_model():
     ul, fb = build_script.MODELS["upper_limb"], build_script.MODELS["full_body"]
     assert ul["license"] == {"id": "CC-BY-SA-4.0", "url": "https://creativecommons.org/licenses/by-sa/4.0/"}
-    assert fb["license"] == {"id": "CC-BY-SA-2.1-JP", "url": "https://creativecommons.org/licenses/by-sa/2.1/jp/"}
+    # The whole body also has Open3DModel nerves (both limbs): see test_open3d_full_body.py.
+    assert fb["license"] == ul["license"]
     assert "Open3DModel" in ul["attribution"] and "BodyParts3D" in ul["attribution"]
     assert "Jan Kooloos" in ul["attribution"] and "Eungyeol Lee" in ul["attribution"]
-    assert "Open3D" not in fb["attribution"]
+    assert "Lower limb" not in ul["attribution"]
     assert {s["license"] for s in ul["sources"]} == {"CC-BY-SA-2.1-JP", "CC-BY-SA-4.0"}
-    assert {s["license"] for s in fb["sources"]} == {"CC-BY-SA-2.1-JP"}
     for f in ("CC-BY-SA-4.0.txt", "CC-BY-SA-2.1-JP.txt"):
         assert os.path.getsize(os.path.join(ROOT, "LICENSES", f)) > 10_000
 

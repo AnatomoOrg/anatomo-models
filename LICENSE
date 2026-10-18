@@ -2,24 +2,24 @@ Ce dépôt contient deux types de contenus, sous plusieurs licences.
 
 1. Modèles 3D et données anatomiques
 
-   a. Modèle upper_limb (membre supérieur) : CC BY-SA 4.0
-      Le modèle publié upper_limb (upper_limb.glb, son manifeste upper_limb.json et ses repères
-      upper_limb.landmarks.json, y compris ceux attachés aux GitHub Releases de ce dépôt) combine :
+   a. Modèles upper_limb (membre supérieur) et full_body (corps entier) : CC BY-SA 4.0
+      Les modèles publiés (upper_limb.glb, full_body.glb, leurs manifestes .json et leurs repères
+      .landmarks.json, y compris ceux attachés aux GitHub Releases de ce dépôt) combinent :
       - des adaptations de BodyParts3D, © The Database Center for Life Science (DBCLS),
         CC BY-SA 2.1 Japon ; l'article 5(2) de cette licence permet de distribuer une adaptation
         sous une version ultérieure de la même licence ;
       - les nerfs de l'Open3DModel (Open3D project, AnatomyTOOL.org ; Jan Kooloos, RadboudUMC ;
-        Eungyeol Lee, LUMC et al.), CC BY-SA 4.0. Seule la géométrie (export OBJ, sans texture)
-        est utilisée.
-      Il est distribué sous la licence Creative Commons Attribution - Partage dans les mêmes
+        Eungyeol Lee, LUMC et al.), CC BY-SA 4.0 : membre supérieur dans upper_limb, membres
+        supérieur et inférieur (des deux côtés) dans full_body. Seule la géométrie (exports OBJ,
+        sans texture) est utilisée.
+      Ils sont distribués sous la licence Creative Commons Attribution - Partage dans les mêmes
       conditions 4.0 International (CC BY-SA 4.0).
       Texte : LICENSES/CC-BY-SA-4.0.txt
       URI : https://creativecommons.org/licenses/by-sa/4.0/
 
-   b. Modèle full_body (corps entier) et tables de noms : CC BY-SA 2.1 Japon
-      Le modèle publié full_body (full_body.glb, full_body.json, full_body.landmarks.json) et les
-      tables de noms (data/) sont des œuvres dérivées de BodyParts3D,
-      © The Database Center for Life Science (DBCLS), et sont distribués sous la licence
+   b. Tables de noms (data/) : CC BY-SA 2.1 Japon
+      Les tables de noms (data/) sont des œuvres dérivées de BodyParts3D,
+      © The Database Center for Life Science (DBCLS), et sont distribuées sous la licence
       Creative Commons Attribution - Partage dans les mêmes conditions 2.1 Japon (CC BY-SA 2.1 JP).
       Texte : LICENSES/CC-BY-SA-2.1-JP.txt
       URI : https://creativecommons.org/licenses/by-sa/2.1/jp/

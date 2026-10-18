@@ -6,7 +6,7 @@ nom et ses repères anatomiques `.landmarks.json`.
 | Fichier | Contenu |
 |---|---|
 | `upper_limb.glb` / `.json` | Membre supérieur droit et ceinture scapulaire (MVP) : os, muscles, artères, veines, nerfs |
-| `full_body.glb` / `.json` | Corps entier (contexte), tous systèmes |
+| `full_body.glb` / `.json` | Corps entier (contexte), tous systèmes, dont les nerfs des quatre membres |
 | `<modèle>.landmarks.json` | Repères anatomiques : osseux, attaches musculaires, pouls, repères cliniques |
 
 ## Repère
@@ -30,7 +30,7 @@ anatomique. L'ordre des nœuds suit l'ordre d'affichage : `os`, `muscles`, `arte
 | `muscles` | Muscles squelettiques et leurs parties tendineuses : tendons, aponévroses, raphés (ligne blanche, raphé pharyngien), rétinaculums, anneau tendineux commun, tractus iliotibial |
 | `arteres` | Artères |
 | `veines` | Veines |
-| `nerfs` | Nerfs et ganglions (BodyParts3D n'a que des nerfs crâniens ; nerfs du membre supérieur de `upper_limb` : Open3DModel) |
+| `nerfs` | Nerfs et ganglions (BodyParts3D n'a que des nerfs crâniens et orbitaires ; nerfs des membres : Open3DModel, membre supérieur dans `upper_limb`, membres supérieurs et inférieurs des deux côtés dans `full_body`) |
 | `organes` | Tout le reste : viscères, encéphale, cœur (y compris ses muscles papillaires), cartilages hors côtes (larynx, nez), disques intervertébraux, ligaments et membranes (sauf le ligament inguinal, partie de l'aponévrose de l'oblique externe, rangé en `muscles` comme la ligne blanche) |
 | `peau` | Peau et phanères (cheveux, sourcils, poils pubiens) |
 
@@ -46,6 +46,42 @@ Attributs de sommet :
 | `POSITION` | `position` | `vec3` float | Position (m) |
 | `NORMAL` | `normal` | `vec3` float | Normale lissée, par structure |
 | `_STRUCTURE` | `_structure` | `float` | Indice de la structure dans le manifeste (entier exact) |
+| `_FIBER` | `_fiber` | `vec3` byte normalisé | Direction des fibres musculaires (unitaire, tangente à la surface lissée, sans sens) ; `muscles` seulement, optionnel |
+| `_TENDON` | `_tendon` | `float` (ubyte normalisé) | Masque tendon : 0 = charnu, 1 = tendon ; `muscles` seulement, optionnel |
+
+### Fibres et tendons (`_FIBER`, `_TENDON`, optionnels)
+
+Le maillage `muscles` peut porter deux attributs de plus, pour dessiner des fibres et des tendons procéduraux
+sans texture ni UV (stries dans le sens de `_FIBER`, éclaircissement nacré là où `_TENDON` est élevé). Ils sont
+optionnels et ajoutés sans changer le format : un lecteur qui les ignore lit le fichier comme avant, et l'app
+doit rendre normalement un modèle qui ne les a pas (versions antérieures).
+
+- `_FIBER` : accessor `VEC3`, `BYTE` normalisé (`normalized: true`, composante / 127), dans son propre
+  bufferView avec `byteStride` 4 (un octet de bourrage par sommet). Vecteur unitaire à la quantification près ;
+  son signe n'a pas de sens (une fibre n'a pas d'orientation).
+- `_TENDON` : accessor `SCALAR`, `UNSIGNED_BYTE` normalisé (valeur / 255), bufferView avec `byteStride` 4.
+
+Coût : 8 octets par sommet du maillage `muscles` (+1,7 Mo pour `upper_limb`, +2,7 Mo pour `full_body`).
+
+Les deux sont calculés géométriquement par le pipeline (`pipeline/anatomo_models/fibers.py`), sur le maillage
+publié de chaque structure :
+
+- **direction** : champ qui court sur la surface de l'origine du muscle à son insertion. Les extrémités sont les
+  repères `origine` et `insertion` du muscle quand il a les deux (les sommets autour d'eux, et ceux qui touchent un
+  os près d'eux : une attache est une surface, pas un point), sinon les deux bouts de la structure le long de son
+  axe principal (ACP), le plus étroit jouant l'insertion. Depuis chaque extrémité, une diffusion de chaleur sur la
+  surface (Laplacien cotangent, méthode de la chaleur) donne la direction des géodésiques qui en partent ; la fibre
+  suit leur différence, pondérée vers l'insertion. Le champ suit les muscles courbes et converge vers l'insertion
+  des muscles en éventail (grand pectoral, deltoïde, grand dorsal). Il est moyenné sur environ 1 cm et tangent à
+  la surface lissée (à quelques degrés près de `NORMAL`, qui suit le relief sculpté des maillages) ;
+- **tendon** : parties de la structure nettement plus fines que son corps (épaisseur locale, mesurée là où la
+  normale rentrante franchit l'axe médian) et de moins de 5 mm environ, dans les structures de plus de 5 à 9 cm
+  (les petits muscles de la face, du cou profond ou du pied restent charnus). Les structures entièrement
+  tendineuses (tendons, aponévroses, raphés, rétinaculums, ligne blanche, tractus iliotibial, ligament inguinal,
+  anneau tendineux commun) valent 1 partout.
+
+BodyParts3D ne sépare presque jamais le tendon du corps charnu : le masque est une estimation, à ne pas
+présenter comme une limite anatomique.
 
 Dans un maillage de système, les structures sont posées les unes après les autres (triées par
 identifiant) : chacune occupe une plage **contiguë** de sommets et de triangles, et aucun sommet
@@ -60,8 +96,8 @@ contient ni image, ni texture, ni coordonnées de texture.
 
 | Modèle | `license.id` | Sources |
 |---|---|---|
-| `upper_limb` | `CC-BY-SA-4.0` | BodyParts3D (CC BY-SA 2.1 JP, adaptable sous une version ultérieure) et Open3DModel (CC BY-SA 4.0) pour les nerfs |
-| `full_body` | `CC-BY-SA-2.1-JP` | BodyParts3D |
+| `upper_limb` | `CC-BY-SA-4.0` | BodyParts3D (CC BY-SA 2.1 JP, adaptable sous une version ultérieure) et Open3DModel membre supérieur (CC BY-SA 4.0) pour les nerfs |
+| `full_body` | `CC-BY-SA-4.0` | BodyParts3D et Open3DModel membres supérieur et inférieur (CC BY-SA 4.0) pour les nerfs des membres (jusqu'à la 1.4.1 : `CC-BY-SA-2.1-JP`, BodyParts3D seul) |
 
 L'app lit la licence et l'attribution dans le manifeste du modèle affiché (`license`, `attribution`),
 sans les supposer identiques d'un modèle à l'autre.
@@ -92,7 +128,7 @@ sans les supposer identiques d'un modèle à l'autre.
       "vertices": [0, 4210],      // [premier sommet, nombre] dans le maillage du système
       "triangles": [0, 8400],     // [premier triangle, nombre] dans le maillage du système
       "bbox": [[-0.21, 0.98, -0.05], [-0.15, 1.31, 0.02]],
-      "source": "bodyparts3d-3.0"   // ou "bodyparts3d-4.0", "open3dmodel" (nerfs de upper_limb)
+      "source": "bodyparts3d-3.0"   // ou "bodyparts3d-4.0", "open3dmodel" (nerfs des membres)
     }
   ]
 }
@@ -105,10 +141,17 @@ sans les supposer identiques d'un modèle à l'autre.
 que `id` (FMA ID). Dans `full_body`, quelques structures sans concept FMA gardent l'identifiant
 de leur fichier élément BodyParts3D (`FJ…`).
 
-Les nerfs de `upper_limb` (Open3DModel) portent aussi un FMA ID, choisi à la main. Un objet source qui
-regroupe plusieurs nerfs (divisions du plexus brachial, nerfs digitaux) est rattaché au concept FMA
-d'ensemble ou générique, dont le nom anglais ne porte pas de côté (`set of anterior divisions of
-brachial plexus`, `proper palmar digital branch of median nerve`…) : le côté est celui du modèle (droit).
+Les nerfs Open3DModel portent aussi un FMA ID, choisi à la main. Un objet source qui regroupe plusieurs
+nerfs (divisions du plexus brachial, nerfs digitaux, nerfs cluniaux…) est rattaché au concept FMA d'ensemble
+ou générique, qui n'a pas de côté dans la FMA :
+
+- dans `upper_limb`, son nom anglais est celui de la FMA, sans côté (`set of anterior divisions of brachial
+  plexus`, `proper palmar digital branch of median nerve`…) : le côté est celui du modèle (droit) ;
+- dans `full_body`, qui a les deux côtés, le nom anglais porte le côté (`set of anterior divisions of right
+  brachial plexus`, `… of left brachial plexus`), comme tous les autres nerfs. Le côté droit garde le FMA ID du
+  concept générique (le même que dans `upper_limb`) ; le côté gauche prend ce FMA ID suivi de **`-L`**
+  (`FMA77549-L`), seul cas d'identifiant qui n'est ni un FMA ID ni un fichier `FJ…`. Une structure gauche
+  se relie à son homologue droite par le nom anglais (`left` → `right`), comme les autres structures paires.
 
 ## Repères anatomiques
 
@@ -158,7 +201,7 @@ pas l'os dans le modèle (chef qui se termine sur un tendon commun) est omise ; 
 ni de sternum dans `upper_limb`), le repère est placé à l'extrémité correspondante du muscle.
 
 Les repères liés aux nerfs sont portés par les os (sillon du nerf ulnaire, col de la fibula) : BodyParts3D n'a pas
-les nerfs périphériques, et les nerfs Open3DModel de `upper_limb` n'ont pas encore de repères.
+les nerfs périphériques, et les nerfs Open3DModel n'ont pas encore de repères.
 
 Jusqu'à la v1.0.0, seul `upper_limb` avait des repères (12, sur l'humérus) et ils n'avaient pas de `side`.
 
@@ -175,3 +218,6 @@ Jusqu'à la v1.0.0, seul `upper_limb` avait des repères (12, sur l'humérus) et
 - **Masquer beaucoup de structures** : `geometry.setDrawRange` ou des groupes construits à partir
   des plages `triangles`, puisque les structures sont contiguës.
 - **Cadrage sur une structure** : `bbox`.
+- **Fibres** : si `geometry.attributes._fiber` existe, three.js le lit normalisé (`vec3` dans [-1, 1]) et
+  `_tendon` comme un `float` dans [0, 1] ; les positions sont en mètres dans l'espace objet, ce qui fixe la
+  fréquence d'un bruit procédural.

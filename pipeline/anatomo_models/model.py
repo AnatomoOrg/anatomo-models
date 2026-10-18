@@ -63,7 +63,8 @@ def decimate(mesh, target):
 
 
 def build(structures, glb_path, manifest_path, model, version, sources, license=LICENSE, attribution=ATTRIBUTION):
-    """structures: list of dicts {id, en, fr, system, mesh (trimesh, BodyParts3D frame, mm), source}.
+    """structures: list of dicts {id, en, fr, system, mesh (trimesh, BodyParts3D frame, mm), source}, and optionally
+    fiber (n,3, glTF frame) and tendon (n,) per vertex of mesh (fibers.annotate), for every structure of a system.
 
     license ({id, url}) and attribution apply to the whole model (glb asset and manifest)."""
     by_system = {s: sorted((x for x in structures if x["system"] == s), key=lambda x: x["id"]) for s in SYSTEMS}
@@ -74,13 +75,18 @@ def build(structures, glb_path, manifest_path, model, version, sources, license=
     for system, items in by_system.items():
         if not items:
             continue
-        pos, nrm, sid, idx = [], [], [], []
+        pos, nrm, sid, idx, fib, ten = [], [], [], [], [], []
         nv = nt = 0
+        with_fibers = [x.get("fiber") is not None for x in items]
+        assert all(with_fibers) or not any(with_fibers), f"{system}: fibres on some structures only"
         for x in items:
             m, index = x["mesh"], len(entries)
             v = to_gltf(m.vertices)
             n = normals(m) @ BP3D_TO_GLTF.T
             pos.append(v); nrm.append(n); sid.append(np.full(len(v), index)); idx.append(m.faces + nv)
+            if with_fibers[0]:
+                assert len(x["fiber"]) == len(x["tendon"]) == len(v), x["id"]
+                fib.append(x["fiber"]); ten.append(x["tendon"])
             entries.append({
                 "index": index, "id": x["id"], "en": x["en"], "fr": x.get("fr"), "system": system,
                 "vertices": [nv, len(v)], "triangles": [nt, len(m.faces)],
@@ -90,7 +96,8 @@ def build(structures, glb_path, manifest_path, model, version, sources, license=
             nv += len(v); nt += len(m.faces)
         color = tuple(int(SYSTEMS[system][i:i + 2], 16) / 255 for i in (1, 3, 5))
         primitives.append({"name": system, "positions": np.concatenate(pos), "normals": np.concatenate(nrm),
-                           "structure": np.concatenate(sid), "indices": np.concatenate(idx), "color": color})
+                           "structure": np.concatenate(sid), "indices": np.concatenate(idx), "color": color,
+                           "fiber": np.concatenate(fib) if fib else None, "tendon": np.concatenate(ten) if ten else None})
         systems.append({"key": system, "node": system, "vertices": nv, "triangles": nt, "structures": len(items)})
     write_glb(glb_path, primitives, copyright=attribution,
               extras={"format": FORMAT, "model": model, "version": version, "license": license})
