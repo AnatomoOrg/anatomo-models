@@ -124,7 +124,7 @@ Aucune copie binaire n'est gardée dans git.
   610 000 hors nerfs, 708 000 avec les nerfs) ; pour le corps entier, 20 % (minimum 200 triangles)
   sauf les artères, veines et nerfs BodyParts3D, gardés à 25 % (minimum 600 triangles) parce qu'à
   200 triangles les petites artères perdaient jusqu'à 3 mm de leur extrémité et les gros troncs devenaient
-  anguleux : environ TOTAL_HORS M triangles hors nerfs des membres (TOTAL_AVEC M avec).
+  anguleux : environ 1,75 M triangles hors nerfs des membres (2,05 M avec).
 - Chaque fichier élément de BodyParts3D est rattaché à son concept FMA le plus spécifique (dans
   les arbres is-a et part-of).
 - Le build échoue si les maillages 3.0 manquent (pas de repli silencieux sur la 4.0) ; un concept
