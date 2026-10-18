@@ -68,8 +68,6 @@ retenu, pour ne pas changer les identifiants ; **le nom français décrit ce que
 | FMA75007 | cavity of neuraxis | central canal of spinal cord | Canal central de la moelle spinale |
 | FMA259248 | content of abdomen | abdominal aorta | Aorte abdominale |
 | FMA68317, FMA68318 | superior / inferior division of upper lobe part of left bronchial tree | left anterior segmental / superior lingular bronchial tree | Arbre bronchique segmentaire antérieur / lingulaire supérieur |
-| FMA7376, FMA7377 | left superior / medial basal bronchopulmonary segment | left superior / medial basal segmental artery | Artère segmentaire supérieure / basale médiale |
-| FMA7365, FMA7386 | right medial basal / left posterior bronchopulmonary segment | segmental veins | Veine segmentaire basale médiale / postérieure |
 | FMA86056 | myocardial zone 4 | posterior leaflet of mitral valve | Cuspide postérieure de la valve mitrale |
 | FMA86064 | myocardial zone 12 | anterolateral head of lateral papillary muscle of left ventricle | Muscle papillaire antérieur du ventricule gauche |
 | FMA85123, FMA85124 | fourth common palmar digital artery (on n'en décrit classiquement que trois) | medial proper palmar digital artery of little finger : le maillage longe le bord ulnaire du petit doigt jusqu'à la pulpe | Artère digitale palmaire propre médiale du petit doigt |
@@ -82,6 +80,20 @@ retenu, pour ne pas changer les identifiants ; **le nom français décrit ce que
 
 Le format n'a pas de champ de synonymes : les anciens noms courants sont indiqués entre parenthèses
 dans ce tableau seulement (muscle de la luette pour le muscle de l'uvule).
+
+### Vaisseaux pulmonaires segmentaires (identifiants changés après la 1.4.1)
+
+Jusqu'à la 1.4.1, quatre vaisseaux segmentaires du poumon portaient l'identifiant et le nom anglais du segment
+bronchopulmonaire qu'ils irriguent ou drainent : BodyParts3D rattache leurs fichiers aux deux concepts, et le
+segment l'emportait sur le vaisseau à égalité. Ils sont maintenant rattachés au concept du vaisseau
+(`OWNER_FIXES` dans `pipeline/full_body.py`) ; les noms français ne changent pas.
+
+| Ancien FMA ID (segment) | Nouveau FMA ID | Nom anglais | Nom français |
+| --- | --- | --- | --- |
+| FMA7376 | FMA8642 | left superior segmental artery | Artère segmentaire supérieure |
+| FMA7377 | FMA8644 | left medial basal segmental artery | Artère segmentaire basale médiale |
+| FMA7365 | FMA9422 | right medial basal segmental vein | Veine segmentaire basale médiale |
+| FMA7386 | FMA9438 | left posterior segmental vein | Veine segmentaire postérieure |
 
 ### Identifiants à connaître
 

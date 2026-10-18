@@ -236,6 +236,9 @@ def test_fr_names_audit():
     assert fr["FMA4771"] == fr["FMA44340"]  # same mesh as the superficial epigastric vein
     assert fr["FMA49214"] == fr["FMA7266"] and fr["FMA71889"] == fr["FMA76903"]  # duplicated meshes
     assert fr["FMA49052"] == "Muscle oblique supérieur de l'œil" and fr["FMA24528"] == "Os cuboïde"
+    # Pulmonary segmental vessels, formerly published under the id of their lung segment (full_body.OWNER_FIXES).
+    assert fr["FMA8642"] == "Artère segmentaire supérieure" and fr["FMA9438"] == "Veine segmentaire postérieure"
+    assert not {"FMA7365", "FMA7386", "FMA7376", "FMA7377"} & set(fr)
     assert not any("Mâchoire" in v or "Triquetrum" in v for v in fr.values())
 
 
@@ -278,3 +281,48 @@ def test_v3_additions_are_named():
     for table in (full_body.V3_ADDITIONS, upper_limb.V3_ADDITIONS):
         for fid, system in table.items():
             assert re.fullmatch(r"FMA\d+", fid) and system in SYSTEMS and fr.get(fid), fid
+
+
+def test_owner_fixes():
+    fr = json.load(open(os.path.join(os.path.dirname(__file__), "..", "data", "fr_names.json"), encoding="utf-8"))
+    for old, new in full_body.OWNER_FIXES.items():
+        assert re.fullmatch(r"FMA\d+", old) and re.fullmatch(r"FMA\d+", new) and fr.get(new), (old, new)
+
+
+def test_tube_decimation_is_lighter():
+    from anatomo_models.model import SYSTEMS
+    assert full_body.TUBES <= set(SYSTEMS)
+    assert full_body.TUBE_KEEP > 0.2 and full_body.TUBE_MIN_TRIS > full_body.MIN_TRIS
+
+
+def test_mesh_distance():
+    from anatomo_models.junctions import mesh_distance
+    a = trimesh.creation.icosphere(subdivisions=3, radius=10)
+    b = a.copy(); b.apply_translation((22, 0, 0))
+    assert mesh_distance(a.vertices, a.faces, b.vertices, b.faces) == pytest.approx(2, abs=1e-6)
+    b.apply_translation((-4, 0, 0))
+    assert mesh_distance(a.vertices, a.faces, b.vertices, b.faces) == 0
+    # Face against face with no vertex nearby; a bar through a plate with no vertex inside the plate.
+    plate = trimesh.creation.box(extents=(100, 100, 1))
+    cube = trimesh.creation.box(extents=(1, 1, 1)); cube.apply_translation((3, 7, 1.5))
+    assert mesh_distance(plate.vertices, plate.faces, cube.vertices, cube.faces) == pytest.approx(0.5, abs=1e-6)
+    bar = trimesh.creation.box(extents=(1, 1, 40))
+    assert mesh_distance(plate.vertices, plate.faces, bar.vertices, bar.faces) == 0
+
+
+def test_junctions_list():
+    from anatomo_models.junctions import JUNCTIONS
+    pairs = JUNCTIONS["full_body"]
+    assert len(set(pairs)) == len(pairs) and all(a != b for a, b in pairs)
+    assert all(re.fullmatch(r"FMA\d+", x) for pair in pairs for x in pair)
+
+
+def test_check_junctions(tmp_path):
+    m = build(sample(), str(tmp_path / "x.glb"), str(tmp_path / "x.json"), "x", "0.0.0", [])
+    gltf, nodes = read_glb(str(tmp_path / "x.glb"))
+    # Faceted sphere of radius 10 at the origin, box 5 mm wide centred at x = 30: 17.5 mm apart, a bit more.
+    assert 17.5 <= check.check_junctions(m, nodes, [("FMA1", "FMA2")], max_gap=25) < 20
+    with pytest.raises(AssertionError, match="open"):
+        check.check_junctions(m, nodes, [("FMA1", "FMA2")])
+    with pytest.raises(AssertionError, match="missing"):
+        check.check_junctions(m, nodes, [("FMA1", "FMA404")])
