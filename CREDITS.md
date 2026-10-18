@@ -82,7 +82,9 @@ Faites par le projet Anatomo avec le code de `pipeline/` :
   du côté droit ; recalage de chaque côté sur les os BodyParts3D 4.0 du corps entier (similitude, puis
   recalage rigide os par os et champ de déplacement interpolé depuis les os) ; nerfs cutanés qui dépassaient
   de la peau BodyParts3D repoussés sous la peau ; rattachement à un identifiant FMA par côté et à un nom
-  français ; décimation (25 %).
+  français ; décimation (25 %) ;
+- attributs de sommet `_FIBER` (direction des fibres) et `_TENDON` (zones tendineuses) ajoutés au
+  maillage `muscles`, calculés depuis les repères d'origine et d'insertion ou l'axe du muscle.
 
 `upper_limb` et `full_body`, qui contiennent aussi des nerfs de l'Open3DModel, sont distribués sous
 CC BY-SA 4.0, ce que permet l'article 5(2) de la CC BY-SA 2.1 JP (version ultérieure de la même licence).
