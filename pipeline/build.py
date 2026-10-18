@@ -1,8 +1,8 @@
-"""Build the published models from BodyParts3D (and Open3DModel for the upper-limb nerves).
+"""Build the published models from BodyParts3D (and Open3DModel for the nerves of the limbs).
 
 Usage: python3 pipeline/build.py SRC_DIR OUT_DIR [--only upper_limb|full_body] [--open3d DIR]
-SRC_DIR holds the BodyParts3D files fetched by pipeline/fetch_bp3d.sh; the Open3DModel OBJ fetched by
-pipeline/fetch_open3d.sh is read from DIR (default SRC_DIR/open3d).
+SRC_DIR holds the BodyParts3D files fetched by pipeline/fetch_bp3d.sh; the Open3DModel OBJs (upper and
+lower limb) fetched by pipeline/fetch_open3d.sh are read from DIR (default SRC_DIR/open3d).
 """
 import argparse
 import json
@@ -13,10 +13,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import full_body  # noqa: E402
 import upper_limb  # noqa: E402
-from anatomo_models import landmarks, open3d  # noqa: E402
+from anatomo_models import landmarks, open3d, open3d_full_body  # noqa: E402
 from anatomo_models.bp3d import BP3D  # noqa: E402
 from anatomo_models.landmark_catalog import CATALOGUE  # noqa: E402
-from anatomo_models.model import ATTRIBUTION, LICENSE, build  # noqa: E402
+from anatomo_models.model import build  # noqa: E402
 from anatomo_models.overrides import SYSTEM_OVERRIDES, apply_system_overrides  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,11 +28,13 @@ SOURCES = [
 ]
 # Structure counts of the last reviewed build: fewer means a selection rule or a source file regressed.
 # upper_limb: 161 BodyParts3D structures + 48 Open3DModel nerves.
-MIN_STRUCTURES = {"upper_limb": 209, "full_body": 1734}
-# upper_limb includes the Open3DModel nerves (CC BY-SA 4.0); full_body stays under BodyParts3D's licence.
+# full_body: 1734 BodyParts3D structures + 220 Open3DModel nerves (48 upper-limb and 62 lower-limb concepts, x 2 sides).
+MIN_STRUCTURES = {"upper_limb": 209, "full_body": 1954}
+# Both models include Open3DModel nerves (CC BY-SA 4.0): they are published under CC BY-SA 4.0.
 MODELS = {
     "upper_limb": {"sources": SOURCES + [open3d.SOURCE], "license": open3d.LICENSE, "attribution": open3d.ATTRIBUTION},
-    "full_body": {"sources": SOURCES, "license": LICENSE, "attribution": ATTRIBUTION},
+    "full_body": {"sources": SOURCES + open3d_full_body.SOURCES, "license": open3d_full_body.LICENSE,
+                  "attribution": open3d_full_body.ATTRIBUTION},
 }
 
 
@@ -40,21 +42,24 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("src"); ap.add_argument("out")
     ap.add_argument("--only", choices=("upper_limb", "full_body"))
-    ap.add_argument("--open3d", help="directory of upper-limb.obj (default: SRC/open3d)")
+    ap.add_argument("--open3d", help="directory of upper-limb.obj and lower-limb.obj (default: SRC/open3d)")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     version = open(os.path.join(ROOT, "VERSION")).read().strip()
     fr = json.load(open(os.path.join(ROOT, "data", "fr_names.json"), encoding="utf-8"))
     bp = BP3D(a.src)
     names, overridden = set(), set()
-    o3d = os.path.join(a.open3d or os.path.join(a.src, "open3d"), open3d.OBJ)
+    o3d = a.open3d or os.path.join(a.src, "open3d")
 
     def upper_limb_items():
         items = upper_limb.structures(bp, fr)
-        return items + open3d.nerves(o3d, items)
+        return items + open3d.nerves(os.path.join(o3d, open3d.OBJ), items)
 
-    for model, structures in (("upper_limb", upper_limb_items),
-                              ("full_body", lambda: full_body.structures(bp, fr))):
+    def full_body_items():
+        items = full_body.structures(bp, fr)
+        return items + open3d_full_body.nerves(o3d, items)
+
+    for model, structures in (("upper_limb", upper_limb_items), ("full_body", full_body_items)):
         if a.only not in (None, model):
             continue
         items = structures()

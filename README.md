@@ -1,12 +1,13 @@
 # anatomo-models
 
 Modèles 3D anatomiques de l'app Anatomo, et le pipeline qui les produit à partir de
-[BodyParts3D](https://dbarchive.biosciencedbc.jp/en/bodyparts3d/) et, pour les nerfs du membre
-supérieur, de l'[Open3DModel](https://anatomytool.org/node/63906) (AnatomyTOOL).
+[BodyParts3D](https://dbarchive.biosciencedbc.jp/en/bodyparts3d/) et, pour les nerfs des membres,
+de l'Open3DModel (AnatomyTOOL : [membre supérieur](https://anatomytool.org/node/63906),
+[membre inférieur](https://anatomytool.org/node/63936)).
 
-Les modèles sont des œuvres dérivées publiées en libre accès : `full_body` sous **CC BY-SA 2.1 Japon**,
-la licence de BodyParts3D ; `upper_limb`, qui contient aussi les nerfs de l'Open3DModel (CC BY-SA 4.0),
-sous **CC BY-SA 4.0**. Le code du pipeline est sous licence MIT.
+Les modèles sont des œuvres dérivées publiées en libre accès sous **CC BY-SA 4.0** : ils combinent
+BodyParts3D (CC BY-SA 2.1 Japon, adaptable sous une version ultérieure) et les nerfs de l'Open3DModel
+(CC BY-SA 4.0). Le code du pipeline est sous licence MIT.
 Voir [`LICENSE`](LICENSE) et [`CREDITS.md`](CREDITS.md).
 
 ## Télécharger les modèles
@@ -18,7 +19,7 @@ manifestes, leurs repères anatomiques, une somme SHA-256 et les textes de licen
 | Modèle | Contenu | Maillages (draw calls) |
 |---|---|---|
 | `upper_limb` | Membre supérieur droit et ceinture scapulaire (MVP) : os, muscles, artères, veines, nerfs | 5 |
-| `full_body` | Corps entier, tous systèmes (contexte) | 7 |
+| `full_body` | Corps entier, tous systèmes (contexte), dont les nerfs des quatre membres | 7 |
 
 Chaque modèle a **un maillage par système** au lieu d'un maillage par structure (le prototype
 en avait 2 234 pour le corps entier), et garde la sélection structure par structure grâce à un
@@ -29,7 +30,7 @@ indice de structure par sommet. Le format est décrit dans [`docs/FORMAT.md`](do
 ```sh
 pip install -r pipeline/requirements.txt
 pipeline/fetch_bp3d.sh bp3d                 # ~750 Mo, sommes SHA-256 vérifiées
-pipeline/fetch_open3d.sh bp3d/open3d        # nerfs du membre supérieur, OBJ ~21 Mo, géométrie seule
+pipeline/fetch_open3d.sh bp3d/open3d        # nerfs des membres, OBJ ~21 + 20 Mo, géométrie seule
 python pipeline/build.py bp3d build         # ou --only upper_limb / --only full_body
 python pipeline/check.py build/upper_limb.json build/full_body.json
 python -m pytest -q tests
@@ -43,33 +44,37 @@ sources, les vérifie (cohérence glb ↔ manifeste, validateur glTF Khronos) et
 
 ### Source Open3DModel : miroir et changement en amont
 
-L'URL d'AnatomyTOOL n'est pas versionnée : le fichier `upper-limb-obj.zip` y est remplacé sur place
-(dernière version datée du 14/10/2026). Il est épinglé par sa somme SHA-256 (`pipeline/open3d.sha256`),
-et chaque release publie, tel quel, le zip qui a servi au build (asset `upper-limb-obj.zip`, avec sa
-somme dans `SHA256SUMS`). `pipeline/fetch_open3d.sh` essaie dans l'ordre, sans jeton :
+Les URL d'AnatomyTOOL ne sont pas versionnées : les fichiers `upper-limb-obj.zip` et `lower-limb-obj.zip`
+y sont remplacés sur place (dernières versions datées du 14/10/2026). Ils sont épinglés par leur somme
+SHA-256 (`pipeline/open3d.sha256`), et chaque release publie, tels quels, les zips qui ont servi au build
+(assets `upper-limb-obj.zip` et `lower-limb-obj.zip`, avec leur somme dans `SHA256SUMS`).
+`pipeline/fetch_open3d.sh` essaie dans l'ordre, pour chacun, sans jeton :
 
-1. `$OPEN3D_MIRROR/upper-limb-obj.zip` si la variable est définie, par exemple
+1. `$OPEN3D_MIRROR/<fichier>` si la variable est définie, par exemple
    `OPEN3D_MIRROR=https://github.com/AnatomoOrg/anatomo-models/releases/download/v1.3.0` pour
    reconstruire exactement une release ;
-2. l'asset de la dernière release du dépôt (`releases/latest/download/upper-limb-obj.zip`) ;
+2. l'asset de la dernière release du dépôt (`releases/latest/download/<fichier>`) ;
 3. l'URL amont.
 
 Un fichier dont la somme diffère de la somme épinglée est écarté, quelle que soit sa provenance. La
-première release qui publie le miroir (1.3.0) se construit depuis l'URL amont.
+première release qui publie le miroir (1.3.0 pour le membre supérieur, la suivante pour le membre
+inférieur) se construit depuis l'URL amont.
 
 Si aucune source n'a la somme épinglée (fichier modifié en amont alors que l'ancienne version n'est
 plus servie, ou nouvelle version à adopter), le build s'arrête : rien n'est publié avec un fichier non
 relu. Pour adopter la nouvelle version :
 
-1. Relire la licence et le crédit demandés sur <https://anatomytool.org/node/63906> et
-   <https://anatomytool.org/node/63903> (toujours CC BY-SA 4.0, export OBJ sans texture) ; reporter un
-   changement de crédit dans `pipeline/anatomo_models/open3d.py` (`CREDIT`) et `CREDITS.md`.
+1. Relire la licence et le crédit demandés sur <https://anatomytool.org/node/63906> (membre supérieur),
+   <https://anatomytool.org/node/63936> (membre inférieur) et <https://anatomytool.org/node/63903>
+   (toujours CC BY-SA 4.0, export OBJ sans texture) ; reporter un changement de crédit dans
+   `pipeline/anatomo_models/open3d.py` ou `open3d_lower.py` (`CREDIT`) et `CREDITS.md`.
 2. Télécharger le zip amont, vérifier qu'il ne contient que des `.obj` (`unzip -l`), calculer sa somme
    (`sha256sum`) et la mettre dans `pipeline/open3d.sha256`. Le miroir de la dernière release, qui a
    l'ancienne somme, sera alors écarté et l'URL amont utilisée.
-3. `pipeline/fetch_open3d.sh bp3d/open3d && python pipeline/build.py bp3d build --only upper_limb` :
-   le build échoue si un objet de `NERVES` ou un os de `BONES` a disparu ou a été renommé (adapter la
-   table), ou si le recalage dépasse 4 mm RMS. Contrôler le journal du recalage et le nombre de nerfs.
+3. `pipeline/fetch_open3d.sh bp3d/open3d && python pipeline/build.py bp3d build` : le build échoue si un
+   objet de `NERVES` ou un os de `BONES` a disparu ou a été renommé (adapter la table), ou si le recalage
+   dépasse 4 mm RMS (5,5 mm pour un os seul dans `full_body`). Contrôler le journal du recalage, le nombre
+   de nerfs et ceux repoussés sous la peau.
 4. `python pipeline/check.py …`, `python -m pytest -q tests`, puis mettre à jour la date du fichier
    dans `CREDITS.md`. La release suivante publiera le nouveau zip comme miroir.
 
@@ -98,9 +103,25 @@ Aucune copie binaire n'est gardée dans git.
   sur les os BodyParts3D du modèle par une similitude (ICP sur 18 os communs : scapula, clavicule,
   humérus, radius, ulna, carpe, métacarpiens ; erreur résiduelle 1,3 mm RMS) et échoue si le recalage
   dépasse 4 mm. Décimation 50 % (environ 99 000 triangles pour les nerfs).
+- **Nerfs des membres dans `full_body`** (1 954 structures dont 253 nerfs, au lieu de 33 nerfs crâniens et
+  orbitaires) : les 48 nerfs du membre supérieur ci-dessus et 62 concepts du membre inférieur de
+  l'Open3DModel (export OBJ « lower limb », 65 objets : racines L1–S5, plexus lombaire et sacral, tronc
+  sympathique lombo-sacral, nerfs sciatique, fémoral, obturateur, tibial, fibulaires, glutéaux, pudendal,
+  cutanés, cluniaux, plantaires, digitaux ; table `pipeline/anatomo_models/open3d_lower.py`), chacun des
+  deux côtés : 220 nerfs, environ 300 000 triangles (décimation 25 %), +8 Mo pour le glb. L'Open3DModel
+  n'ayant que le côté droit, le gauche est obtenu par symétrie puis recalé sur les os gauches
+  (`pipeline/anatomo_models/open3d_full_body.py`). Chaque côté est recalé sur les os 4.0 du corps entier
+  par une similitude, puis os par os (ICP rigide), les nerfs suivant un champ de déplacement interpolé depuis
+  les os : erreur résiduelle 1,8 mm RMS sur les 18 os du membre supérieur, 2,6 mm sur les 24 os du membre
+  inférieur (rachis lombaire, sacrum, os coxal, os longs, tarse, métatarse ; une similitude seule laissait
+  6 mm, l'Open3DModel ayant un tibia 2 cm plus court et une autre posture de hanche). Les nerfs cutanés qui
+  dépassaient de la peau BodyParts3D (jusqu'à 10 mm : nerfs cluniaux, cutané latéral de la cuisse, rameau
+  cutané du nerf obturateur…) sont repoussés à 2,5 mm sous sa surface (`pipeline/anatomo_models/skin.py`).
+  Le côté gauche prend les concepts FMA gauches ; voir [`docs/FORMAT.md`](docs/FORMAT.md#le-manifeste) pour
+  les concepts sans côté.
 - Fusion des sommets dupliqués avant décimation (sinon la décimation ouvre des trous), puis
   décimation : 20 % pour le membre supérieur (minimum 3 000 triangles par structure, environ
-  610 000 hors nerfs, 708 000 avec les nerfs), environ 1,5 M triangles pour le corps entier.
+  610 000 hors nerfs, 708 000 avec les nerfs), environ 1,55 M triangles pour le corps entier hors nerfs des membres (1,85 M avec).
 - Chaque fichier élément de BodyParts3D est rattaché à son concept FMA le plus spécifique (dans
   les arbres is-a et part-of).
 - Le build échoue si les maillages 3.0 manquent (pas de repli silencieux sur la 4.0) ; un concept
@@ -113,13 +134,21 @@ Aucune copie binaire n'est gardée dans git.
 
 ## Limites connues
 
-- BodyParts3D n'a **pas de nerfs du membre supérieur** : ceux de `upper_limb` viennent de
+- BodyParts3D n'a **pas de nerfs des membres** : ceux de `upper_limb` et `full_body` viennent de
   l'Open3DModel, un autre sujet recalé sur nos os. Après recalage, quelques nerfs touchent encore
   un os de quelques millimètres (nerf radial dans le sillon du nerf radial, jusqu'à 5,6 mm ; nerf
   cutané latéral inférieur du bras, nerf suprascapulaire, jusqu'à 3,3 mm). Les nerfs digitaux suivent
   la position des doigts de l'Open3DModel, proche de la nôtre. Le nerf thoracodorsal et le nerf
   intercostobrachial manquent (absents de la source). Points anatomiques incertains : voir
   [`docs/NOMS.md`](docs/NOMS.md#nerfs-du-membre-supérieur-open3dmodel).
+- **Nerfs de `full_body`** : mêmes limites, plus celles du recalage sur les os 4.0. Après recalage, les racines
+  sacrales et coccygiennes traversent le sacrum BodyParts3D, dont le canal sacral n'est pas modélisé (20 à 35 %
+  de leurs sommets dans l'os) ; le nerf subscapulaire inférieur touche la 5e côte (le gril costal de
+  BodyParts3D est plus près de la scapula) ; quelques nerfs digitaux entrent dans les phalanges (position des
+  doigts et des orteils de la source). Les nerfs cutanés repoussés sous la peau gardent leur forme mais pas
+  leur trajet exact. Il manque les nerfs du tronc (intercostaux, phrénique, vague, chaîne sympathique
+  thoracique) et la moelle spinale. Noms et points incertains du membre inférieur :
+  [`docs/NOMS.md`](docs/NOMS.md#nerfs-du-membre-inférieur-open3dmodel-full_body).
 - Le grand dorsal et le chef profond du court fléchisseur du pouce (dont le fichier 4.0 est du mauvais
   côté) viennent de la 3.0 seule, recalés par le champ de déplacement, comme les trois parties du
   trapèze (qui atteignent le rachis et l'occiput, où la translation constante du bras est fausse de

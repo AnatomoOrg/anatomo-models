@@ -140,3 +140,39 @@ plusieurs nerfs), le concept d'ensemble ou générique, sans côté.
 
 Absents de la source : nerf thoracodorsal, nerf intercostobrachial, nerf interosseux antérieur,
 pas d'objet séparé pour les rameaux musculaires.
+
+### Les deux côtés dans `full_body`
+
+Dans `full_body`, les nerfs Open3DModel du membre supérieur sont présents des deux côtés. Le nom français est le
+même à droite et à gauche (pas de côté dans le nom). Le côté gauche prend le concept FMA gauche correspondant
+(`LEFT`, `pipeline/anatomo_models/open3d_full_body.py`, vérifié dans la FMA de l'EBI : même libellé avec « left »).
+Pour les concepts génériques sans côté (divisions du plexus brachial, nerfs digitaux), le nom anglais reçoit le
+côté et le gauche prend l'identifiant `FMA…-L` : voir [`FORMAT.md`](FORMAT.md#le-manifeste).
+
+## Nerfs du membre inférieur (Open3DModel, `full_body`)
+
+Les 65 objets nerveux de l'export « lower limb » de l'Open3DModel sont rattachés à 62 concepts FMA par la table
+`NERVES` de `pipeline/anatomo_models/open3d_lower.py`, avec la même méthode que pour le membre supérieur : FMA ID
+et nom anglais vérifiés dans la FMA de l'EBI (OLS, octobre 2026), nom français dans la terminologie anatomique
+internationale en français, sans côté. Comme ceux du membre supérieur, ces noms sont dans la table du pipeline et
+pas dans `data/fr_names.json`. Ils sont présents des deux côtés de `full_body`, avec les mêmes règles que
+ci-dessus. Aucun anatomiste ne les a relus.
+
+| Objet Open3DModel | FMA | Nom français | Doute |
+| --- | --- | --- | --- |
+| `L1_root` … `S5_root` | FMA17673 … FMA18079 root of right first lumbar nerve … fifth sacral nerve | Racines du 1er nerf lombaire (L1) … du 5e nerf sacral (S5) | Les objets vont du cône médullaire aux foramens (queue de cheval) ; racines antérieure et postérieure non séparées |
+| `Sympathic_trunk` | FMA6259 right sympathetic trunk | Tronc sympathique (parties lombaire et sacrale) | L'objet ne montre que les parties lombaire et sacrale |
+| `Iliohypogastric_nerve, lateral cutaneous branch` + `…, anterior branch` | FMA16491 right iliohypogastric nerve | Nerf ilio-hypogastrique | La FMA n'a pas de concept pour ces rameaux cutanés (seulement les rameaux iliaque et hypogastrique) ; le premier objet contient aussi le tronc du nerf : fusionnés |
+| `Genitofemoral_nerve, genital branch` | FMA20632 genital branch of right genitofemoral nerve | Rameau génital du nerf génito-fémoral | L'objet part du plexus lombaire : il contient aussi le tronc du nerf génito-fémoral |
+| `Nerve_to_psoas_major_and_iliacus` | FMA20588 nerve to right psoas major | Nerf des muscles grand psoas et iliaque | Le concept FMA ne couvre que le grand psoas (l'iliaque est innervé par le nerf fémoral) |
+| `Femoral_nerve, anterior cutaneous branches` | FMA45253 anterior cutaneous branch of right femoral nerve | Rameaux cutanés antérieurs du nerf fémoral | Concept FMA au singulier (le concept d'ensemble n'a pas de côté) |
+| `Saphenous_branch_of_Femoralis_nerve` / `Saphenous_nerve (Medial crural cutaneous branches)` | FMA45263 right saphenous nerve / FMA75559 set of medial crural cutaneous branches of saphenous nerve | Nerf saphène / Rameaux cutanés cruraux médiaux du nerf saphène | Le premier objet est le nerf à la cuisse ; le second, à la jambe, contient aussi la fin du tronc du nerf |
+| `Superior_clunial_nerve (posterior rami)` | FMA75468 set of superior clunial nerves | Nerfs cluniaux supérieurs | Rameaux postérieurs de L1–L3, reliés aux racines lombaires |
+| `Nerve_to_obturator_internus (and superior gemellus)` | FMA78712 nerve to right obturator internus | Nerf du muscle obturateur interne | Il innerve aussi le jumeau supérieur |
+| `Nerve_to_Levator_ani_and_coccygeus` | FMA82933 branch of sacral nerve plexus to right levator ani | Nerf des muscles élévateur de l'anus et coccygien | Le concept FMA ne couvre que l'élévateur de l'anus |
+| `Lateral_dorsal_cutaneous_nerve` | FMA45367 right intermediate dorsal cutaneous nerve | Nerf cutané dorsal intermédiaire | Nommé « lateral » dans la source, mais il naît du nerf fibulaire superficiel avec le nerf cutané dorsal médial, et pas du nerf sural (qui a son propre objet, `Sural_nerve, Lateral_dorsal_cutaneous_nerve`) |
+| `Lateral_calcaneal_nerves`, `Medial_calcaneal_branches_of_Tibial_nerve` | FMA45428, FMA45432 (concepts au singulier) | Rameaux calcanéens latéraux du nerf sural / médiaux du nerf tibial | Plusieurs rameaux, concept FMA au singulier |
+| `Proper_plantar_digital_branches (Medial / Lateral plantar nerve)` | FMA75493 set of proper plantar digital nerves | Nerfs digitaux plantaires propres | Deux objets (nerfs plantaires médial et latéral) fusionnés : la FMA n'a pas de concept par nerf d'origine |
+| `Dorsal_digital_branches_of_superficial / deep_fibular_nerve` | FMA75491 set of dorsal digital nerves of foot | Nerfs digitaux dorsaux du pied | Même chose pour les nerfs fibulaires superficiel et profond |
+
+Non repris : le fragment de moelle spinale (`Spinal_cord_curve`, cône médullaire seul) et l'arachnoïde.

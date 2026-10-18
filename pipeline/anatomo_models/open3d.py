@@ -255,29 +255,33 @@ def _surface_points(mesh):
     return np.concatenate([mesh.vertices, mesh.triangles_center])
 
 
-def fit(meshes, items, log=print):
+def fit(meshes, items, log=print, bones=None, label="open3d", check=True):
     """Similarity transform (m, t) from the Open3D bones (BodyParts3D frame, mm) onto the model's bones.
 
+    bones: {Open3D bone object: FMA id of the same bone in the model} (default `BONES`). With `check`, the
+    build stops when the bones do not fit within MAX_RMS_MM (without: only the scale is checked, for a fit
+    that a per-bone refinement completes).
     Returns (m, t, {bone: (rms, median, p95) in mm}); m is a rotation times a uniform scale."""
+    bones = BONES if bones is None else bones
     by_id = {x["id"]: x for x in items}
-    if missing := sorted(f for f in BONES.values() if f not in by_id):
+    if missing := sorted(f for f in bones.values() if f not in by_id):
         raise SystemExit(f"Open3D registration: bones missing from the model: {missing}")
     pairs = []
-    for name, fid in BONES.items():
+    for name, fid in bones.items():
         x = by_id[fid]
         target = x["src"] if x.get("src") is not None else x["mesh"]
         pairs.append((to_bp3d(meshes[name].vertices), _surface_points(target)))
     m, t, st = register(pairs, scale=True)
     scale = float(np.cbrt(np.linalg.det(m)))
     angle = np.degrees(np.arccos(np.clip((np.trace(m / scale) - 1) / 2, -1, 1)))
-    stats = dict(zip(BONES, st.values()))
+    stats = dict(zip(bones, st.values()))
     n = np.array([len(a) for a, _ in pairs])
     rms = float(np.sqrt(np.sum(n * np.array([s[0] for s in st.values()]) ** 2) / n.sum()))
-    log(f"open3d registration: scale {scale:.4f}, rotation {angle:.2f} deg, translation {np.round(t, 1).tolist()} mm, "
+    log(f"{label} registration: scale {scale:.4f}, rotation {angle:.2f} deg, translation {np.round(t, 1).tolist()} mm, "
         f"bone rms {rms:.2f} mm")
     log("   " + ", ".join(f"{k.removesuffix('.r')} {v[0]:.1f}" for k, v in stats.items()) + " (rms, mm)")
-    if rms > MAX_RMS_MM or not SCALE_RANGE[0] < scale < SCALE_RANGE[1]:
-        raise SystemExit(f"Open3D registration failed: bone rms {rms:.2f} mm, scale {scale:.3f}")
+    if (check and rms > MAX_RMS_MM) or not SCALE_RANGE[0] < scale < SCALE_RANGE[1]:
+        raise SystemExit(f"Open3D registration failed ({label}): bone rms {rms:.2f} mm, scale {scale:.3f}")
     return m, t, stats
 
 
