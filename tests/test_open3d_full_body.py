@@ -202,6 +202,7 @@ def test_nerves_of_both_sides_in_a_model(tmp_path, monkeypatch):
             x["mesh"] = trimesh.Trimesh(x["src"].vertices, x["src"].faces)
     fbm = build_script.MODELS["full_body"]
     m = build(items + nerves, str(tmp_path / "fb.glb"), str(tmp_path / "fb.json"), "full_body", "0.0.0", **fbm)
+    monkeypatch.setattr(check, "JUNCTIONS", {})  # the synthetic body has no vessels
     check.check(str(tmp_path / "fb.json"))
     assert m["license"]["id"] == "CC-BY-SA-4.0"
     sides = [s for s in m["structures"] if s["system"] == "nerfs"]
