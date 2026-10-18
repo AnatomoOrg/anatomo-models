@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import full_body  # noqa: E402
 import upper_limb  # noqa: E402
-from anatomo_models import landmarks, open3d  # noqa: E402
+from anatomo_models import fibers, landmarks, open3d  # noqa: E402
 from anatomo_models.bp3d import BP3D  # noqa: E402
 from anatomo_models.landmark_catalog import CATALOGUE  # noqa: E402
 from anatomo_models.model import ATTRIBUTION, LICENSE, build  # noqa: E402
@@ -63,11 +63,13 @@ def main():
         # Before build(): the system decides which mesh the geometry goes to.
         overridden |= apply_system_overrides(items)
         names |= {x["en"] for x in items}
-        m = build(items, os.path.join(a.out, f"{model}.glb"), os.path.join(a.out, f"{model}.json"), model, version,
-                  **MODELS[model])
         marks, failed = landmarks.place(items, CATALOGUE)
         if failed:
             raise SystemExit(f"{model}: landmarks without a position: {failed}")
+        # Fibre directions run from the origin to the insertion landmarks of the muscles that have them.
+        fibers.annotate(items, marks)
+        m = build(items, os.path.join(a.out, f"{model}.glb"), os.path.join(a.out, f"{model}.json"), model, version,
+                  **MODELS[model])
         write_landmarks(m, marks, os.path.join(a.out, f"{model}.landmarks.json"))
         report(m, marks)
     if a.only is None and (missing := landmarks.unresolved(names, CATALOGUE)):

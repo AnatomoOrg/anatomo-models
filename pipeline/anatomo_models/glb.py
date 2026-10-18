@@ -5,13 +5,16 @@ POSITION, NORMAL and the application-specific attribute `_STRUCTURE`: the index 
 each vertex belongs to, as listed in the model manifest. It is a float (exact for any index below
 2^24) because glTF requires 4-byte aligned vertex attributes and shaders read floats anyway.
 three.js exposes it as `geometry.attributes._structure`.
+
+Optional (muscles): `_FIBER`, the unit fibre direction (VEC3, normalized BYTE), and `_TENDON`, the tendon
+mask in [0, 1] (SCALAR, normalized UNSIGNED_BYTE), each in its own bufferView with a 4-byte stride.
 """
 import json
 import struct
 
 import numpy as np
 
-FLOAT, USHORT, UINT = 5126, 5123, 5125
+BYTE, UBYTE, FLOAT, USHORT, UINT = 5120, 5121, 5126, 5123, 5125
 ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER = 34962, 34963
 GLB_MAGIC, CHUNK_JSON, CHUNK_BIN = 0x46546C67, 0x4E4F534A, 0x004E4942
 
@@ -21,7 +24,8 @@ def _pad(b, fill=b"\0"):
 
 
 def write_glb(path, primitives, copyright=None, extras=None):
-    """primitives: list of dicts {name, positions (N,3), normals (N,3), structure (N,), indices (M,3), color (r,g,b)}."""
+    """primitives: list of dicts {name, positions (N,3), normals (N,3), structure (N,), indices (M,3), color (r,g,b)},
+    and optionally fiber (N,3) unit vectors and tendon (N,) in [0, 1]."""
     gltf = {
         "asset": {"version": "2.0", "generator": "anatomo-models pipeline"},
         "scene": 0, "scenes": [{"nodes": list(range(len(primitives)))}],
@@ -34,12 +38,17 @@ def write_glb(path, primitives, copyright=None, extras=None):
         gltf["asset"]["extras"] = extras
     blob = bytearray()
 
-    def add(array, component, kind, target, minmax=False):
+    def add(array, component, kind, target, minmax=False, stride=None, normalized=False):
         data = np.ascontiguousarray(array).tobytes()
-        gltf["bufferViews"].append({"buffer": 0, "byteOffset": len(blob), "byteLength": len(data), "target": target})
+        view = {"buffer": 0, "byteOffset": len(blob), "byteLength": len(data), "target": target}
+        if stride:
+            view["byteStride"] = stride
+        gltf["bufferViews"].append(view)
         blob.extend(_pad(data))
         acc = {"bufferView": len(gltf["bufferViews"]) - 1, "componentType": component,
                "count": int(len(array)), "type": kind}
+        if normalized:
+            acc["normalized"] = True
         if minmax:
             acc["min"] = [float(v) for v in array.min(0)]
             acc["max"] = [float(v) for v in array.max(0)]
@@ -57,6 +66,14 @@ def write_glb(path, primitives, copyright=None, extras=None):
             "NORMAL": add(nrm, FLOAT, "VEC3", ARRAY_BUFFER),
             "_STRUCTURE": add(sid, FLOAT, "SCALAR", ARRAY_BUFFER),
         }
+        if p.get("fiber") is not None:
+            # Vertex attributes are 4-byte aligned: one padding byte per vertex after the direction, three after the mask.
+            fib = np.zeros((len(pos), 4), np.int8)
+            fib[:, :3] = np.round(np.clip(np.asarray(p["fiber"], float), -1, 1) * 127)
+            ten = np.zeros((len(pos), 4), np.uint8)
+            ten[:, 0] = np.round(np.clip(np.asarray(p["tendon"], float), 0, 1) * 255)
+            attrs["_FIBER"] = add(fib, BYTE, "VEC3", ARRAY_BUFFER, stride=4, normalized=True)
+            attrs["_TENDON"] = add(ten, UBYTE, "SCALAR", ARRAY_BUFFER, stride=4, normalized=True)
         ind = add(idx, UINT, "SCALAR", ELEMENT_ARRAY_BUFFER)
         r, g, b = p.get("color", (0.8, 0.8, 0.8))
         gltf["materials"].append({"name": p["name"], "pbrMetallicRoughness": {
@@ -74,12 +91,13 @@ def write_glb(path, primitives, copyright=None, extras=None):
         f.write(struct.pack("<II", len(blob), CHUNK_BIN) + bytes(blob))
 
 
-_DTYPES = {FLOAT: np.float32, USHORT: np.uint16, UINT: np.uint32}
+_DTYPES = {BYTE: np.int8, UBYTE: np.uint8, FLOAT: np.float32, USHORT: np.uint16, UINT: np.uint32}
 _WIDTH = {"SCALAR": 1, "VEC3": 3}
 
 
 def read_glb(path):
-    """Read a .glb written by write_glb. Returns (gltf json, {node name: {attribute: array, 'indices': (M,3)}})."""
+    """Read a .glb written by write_glb. Returns (gltf json, {node name: {attribute: array, 'indices': (M,3)}}).
+    Normalized attributes are returned as floats (BYTE / 127, UNSIGNED_BYTE / 255)."""
     raw = open(path, "rb").read()
     magic, version, total = struct.unpack_from("<III", raw)
     assert magic == GLB_MAGIC and version == 2 and total == len(raw)
@@ -90,8 +108,13 @@ def read_glb(path):
 
     def acc(i):
         a = gltf["accessors"][i]; v = gltf["bufferViews"][a["bufferView"]]
-        arr = np.frombuffer(blob, _DTYPES[a["componentType"]], a["count"] * _WIDTH[a["type"]], v["byteOffset"])
-        return arr.reshape(a["count"], -1) if a["type"] != "SCALAR" else arr
+        dt, w = np.dtype(_DTYPES[a["componentType"]]), _WIDTH[a["type"]]
+        stride = v.get("byteStride", dt.itemsize * w) // dt.itemsize
+        arr = np.frombuffer(blob, dt, a["count"] * stride, v["byteOffset"] + a.get("byteOffset", 0))
+        arr = arr.reshape(a["count"], stride)[:, :w]
+        if a.get("normalized"):
+            arr = np.maximum(arr / {BYTE: 127.0, UBYTE: 255.0}[a["componentType"]], -1.0).astype(np.float32)
+        return arr if a["type"] != "SCALAR" else arr[:, 0]
 
     out = {}
     for node in gltf["nodes"]:
