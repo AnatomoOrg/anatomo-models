@@ -234,6 +234,60 @@ def test_skinned_glb(tmp_path):
     assert manifest["rig"]["joints"][2]["parent"] == "ceinture-d"
 
 
+def _fine(mesh, edge=0.004):
+    """A mesh with short edges (the cylinders have edges as long as themselves), as the published meshes have."""
+    v, f = trimesh.remesh.subdivide_to_size(mesh.vertices, mesh.faces, max_edge=edge)
+    return trimesh.Trimesh(v, f)
+
+
+def test_soft_tissues_follow_the_bones(tmp_path):
+    items, marks = arm()
+    for x in items:  # distances to the bones are taken to their vertices
+        x["mesh"] = _fine(x["mesh"], 4.0)
+    mid_arm, mid_forearm = (HEAD + ELBOW) / 2, (ELBOW + WRIST) / 2
+    front = np.array([0, 0, 0.02])
+    items += [
+        dict(id="FMA900", en="right biceps", fr="biceps", system="muscles", source="t",
+             mesh=_bp3d(_fine(_rod(mid_arm + front, mid_forearm + front, 0.012)))),
+        dict(id="FMA901", en="right median nerve", fr="nerf", system="nerfs", source="t",
+             mesh=_bp3d(_fine(_rod(mid_arm - front, mid_forearm - front, 0.003)))),
+        dict(id="FMA902", en="integumentary system", fr="peau", system="peau", source="t",
+             mesh=_bp3d(_fine(_rod(mid_arm, mid_forearm, 0.04), 0.008))),
+        # A trunk muscle from the arm to the chest, whose bones (the thorax) are not in the model.
+        dict(id="FMA903", en="right pectoralis major", fr="grand pectoral", system="muscles", source="t",
+             mesh=_bp3d(_fine(_rod(HEAD + [0.0, -0.07, 0.022], SC + [0.02, -0.12, 0.03], 0.01)))),
+    ]
+    m = built(tmp_path, items, marks)
+    check.check(str(tmp_path / "x.json"))
+    assert m["rig"]["skinned"] == ["os", "muscles", "nerfs", "peau"]
+    gltf, nodes = read_glb(str(tmp_path / "x.glb"))
+    assert all(n.get("skin") == 0 for n in gltf["nodes"] if "mesh" in n)
+    names = [j["name"] for j in m["rig"]["joints"]]
+    for system in ("muscles", "nerfs", "peau"):
+        p, j, w = nodes[system]["POSITION"], nodes[system]["JOINTS_0"], nodes[system]["WEIGHTS_0"]
+        top = np.array([names[k] for k in j[:, 0]])
+        assert np.allclose(w.sum(1), 1, atol=1e-5)
+        limb = np.ones(len(p), bool)  # the structures along the limb, not the trunk muscle
+        for st in m["structures"]:
+            if st["id"] == "FMA903" and system == "muscles":
+                limb[st["vertices"][0]:sum(st["vertices"])] = False
+        upper, lower = limb & (p[:, 1] > HEAD[1] - 0.06), limb & (p[:, 1] < WRIST[1] + 0.13)
+        assert np.all(top[upper] == "epaule-d") and np.all(w[upper, 0] > 0.9), system
+        forearm = np.isin(j, [names.index("coude-d"), names.index("avant-bras-d")])
+        assert np.all((w * forearm)[lower].sum(1) > 0.9), system  # the ulna and the radius
+        # Around the elbow, the vertices blend the arm and the forearm.
+        around = limb & (np.abs(p[:, 1] - ELBOW[1]) < 0.01)
+        assert np.any(w[around, 1] > 0.2), system
+    # Without the thorax, the chest end of the trunk muscle stays still (the root), its arm end follows the arm.
+    pec = next(s for s in m["structures"] if s["id"] == "FMA903")
+    v0, n = pec["vertices"]
+    p, j, w = (nodes["muscles"][k][v0:v0 + n] for k in ("POSITION", "JOINTS_0", "WEIGHTS_0"))
+    chest = p[:, 0] > SC[0] - 0.01
+    assert np.all((w * (j == 0))[chest].sum(1) > 0.6)
+    arm_end = np.linalg.norm(p - (HEAD + [0.0, -0.07, 0.022]), axis=1) < 0.015
+    assert (w * (j == 0))[arm_end].sum(1).mean() < 0.15
+
+
 def test_check_catches_a_bone_bound_elsewhere(tmp_path):
     built(tmp_path)
     m = json.load(open(tmp_path / "x.json"))

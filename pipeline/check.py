@@ -30,9 +30,9 @@ def check(manifest_path):
         sid, tri = n["_STRUCTURE"], n["indices"]
         assert len(n["POSITION"]) == len(sid) == sys_["vertices"] and len(tri) == sys_["triangles"]
         assert np.all(np.isfinite(n["POSITION"])) and np.allclose(np.linalg.norm(n["NORMAL"], axis=1), 1, atol=1e-3)
-        if "JOINTS_0" in n or "WEIGHTS_0" in n:  # optional, os only
-            assert sys_["key"] == "os" and "JOINTS_0" in n and "WEIGHTS_0" in n, f"{sys_['key']}: skin attributes"
-            assert "rig" in m, "the os mesh has a skin (JOINTS_0) but the manifest has no rig section"
+        if "JOINTS_0" in n or "WEIGHTS_0" in n:  # optional: the os mesh, then the others (rig.skinned)
+            assert "JOINTS_0" in n and "WEIGHTS_0" in n, f"{sys_['key']}: skin attributes"
+            assert "rig" in m, f"{sys_['key']}: a skin (JOINTS_0) but the manifest has no rig section"
         if "_FIBER" in n or "_TENDON" in n:  # optional, muscles only
             assert sys_["key"] == "muscles" and "_FIBER" in n and "_TENDON" in n, sys_["key"]
             assert len(n["_FIBER"]) == len(n["_TENDON"]) == len(sid)
@@ -63,7 +63,8 @@ def check(manifest_path):
 
 def check_rig(m, gltf, nodes, accessor):
     """Skin of the os mesh: every bone bound whole to the joint the manifest gives it, joints and movements of the
-    manifest are the glb's nodes and animations, and each movement starts and ends in the anatomical position."""
+    manifest are the glb's nodes and animations, and each movement starts and ends in the anatomical position.
+    The other skinned meshes (rig.skinned) have well-formed weights."""
     assert "rig" in m, "the glb has a skin (skins) but the manifest has no rig section"
     assert len(gltf.get("skins", [])) == 1, "the manifest has a rig section but the glb has no skin (or several)"
     rig = m["rig"]
@@ -71,8 +72,16 @@ def check_rig(m, gltf, nodes, accessor):
     skin, = gltf["skins"]
     node_names = [gltf["nodes"][i]["name"] for i in skin["joints"]]
     assert node_names == names, "skin joints differ from the manifest"
-    os_node = next(n for n in gltf["nodes"] if n.get("mesh") is not None and n["name"] == rig["node"])
-    assert os_node.get("skin") == 0 and sum("skin" in n for n in gltf["nodes"]) == 1
+    skinned = [n["name"] for n in gltf["nodes"] if n.get("mesh") is not None and n.get("skin") == 0]
+    assert sum("skin" in n for n in gltf["nodes"]) == len(skinned), "a node uses another skin"
+    weighted = [name for name, n in nodes.items() if "JOINTS_0" in n]
+    assert sorted(weighted) == sorted(skinned), f"skin attributes on {weighted}, skinned nodes {skinned}"
+    assert rig.get("skinned", [rig["node"]]) == skinned and skinned[0] == rig["node"], "skinned nodes differ"
+    for name in skinned[1:]:
+        # Soft tissues: up to 4 joints, weights summing to 1, the heaviest first, and a joint of the skin.
+        j_, w_ = nodes[name]["JOINTS_0"], nodes[name]["WEIGHTS_0"]
+        assert np.allclose(w_.sum(1), 1, atol=1e-5) and np.all(np.diff(w_, axis=1) <= 1e-6), name
+        assert j_.max() < len(names) and np.all(j_[w_ == 0] == 0), name
     os_ = nodes[rig["node"]]
     joint, weight = os_["JOINTS_0"], os_["WEIGHTS_0"]
     assert np.all(weight[:, 0] == 1) and np.all(weight[:, 1:] == 0) and np.all(joint[:, 1:] == 0)

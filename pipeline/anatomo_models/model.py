@@ -12,6 +12,7 @@ import numpy as np
 import trimesh
 
 from .glb import write_glb
+from .rig import SoftSkin
 
 FORMAT = "anatomo-models/1"
 
@@ -36,6 +37,7 @@ def rig_manifest(skin):
     joints = skin["joints"]
     return {
         "node": "os",
+        "skinned": ["os", *skin.get("soft", {})],
         "joints": [{"name": j["name"], "fr": j["fr"],
                     "parent": joints[j["parent"]]["name"] if j["parent"] is not None else None,
                     "pivot": np.round(j["pivot"], 5).tolist(), "structures": j["structures"]} for j in joints],
@@ -82,7 +84,7 @@ def build(structures, glb_path, manifest_path, model, version, sources, license=
 
     license ({id, url}) and attribution apply to the whole model (glb asset and manifest).
     rig: optional function (manifest entries of the os system, os positions) -> rig.build_rig result or None, to skin
-    the bones and add their movements."""
+    the bones and add their movements; the other systems are then skinned to the same joints (rig.SoftSkin)."""
     by_system = {s: sorted((x for x in structures if x["system"] == s), key=lambda x: x["id"]) for s in SYSTEMS}
     assert all(x["system"] in SYSTEMS for x in structures), "unknown system"
     ids = [x["id"] for x in structures]
@@ -119,6 +121,14 @@ def build(structures, glb_path, manifest_path, model, version, sources, license=
     if rig is not None and "os" in by_system and by_system["os"]:
         os_prim = next(p for p in primitives if p["name"] == "os")
         skin = rig([e for e in entries if e["system"] == "os"], os_prim["positions"])
+        if skin is not None:
+            # The other systems follow the bones (muscles first: the skin takes its weights from them).
+            soft, skin["soft"] = SoftSkin(skin, os_prim["positions"]), {}
+            for p in primitives:
+                if p["name"] != "os":
+                    ranges = [tuple(e["vertices"]) for e in entries if e["system"] == p["name"]]
+                    skin["soft"][p["name"]] = soft.weights(p["positions"], p["indices"], ranges,
+                                                           envelope=p["name"] == "peau", muscles=p["name"] == "muscles")
     write_glb(glb_path, primitives, copyright=attribution,
               extras={"format": FORMAT, "model": model, "version": version, "license": license}, rig=skin)
     manifest = {

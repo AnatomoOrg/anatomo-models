@@ -51,8 +51,8 @@ Attributs de sommet :
 | `_STRUCTURE` | `_structure` | `float` | Indice de la structure dans le manifeste (entier exact) |
 | `_FIBER` | `_fiber` | `vec3` byte normalisé | Direction des fibres musculaires (unitaire, tangente à la surface lissée, sans sens) ; `muscles` seulement, optionnel |
 | `_TENDON` | `_tendon` | `float` (ubyte normalisé) | Masque tendon : 0 = charnu, 1 = tendon ; `muscles` seulement, optionnel |
-| `JOINTS_0` | `skinIndex` | `vec4` ubyte | Articulation qui porte le sommet, puis 0, 0, 0 ; `os` seulement, optionnel |
-| `WEIGHTS_0` | `skinWeight` | `vec4` ubyte normalisé | Toujours 1, 0, 0, 0 (os rigides) ; `os` seulement, optionnel |
+| `JOINTS_0` | `skinIndex` | `vec4` ubyte | `os` : l'articulation qui porte le sommet, puis 0, 0, 0 ; autres systèmes (1.8.0) : jusqu'à 4 articulations ; optionnel |
+| `WEIGHTS_0` | `skinWeight` | `vec4` ubyte normalisé | `os` : toujours 1, 0, 0, 0 (os rigides) ; autres systèmes : poids de somme 1, le plus lourd d'abord ; optionnel |
 
 ### Fibres et tendons (`_FIBER`, `_TENDON`, optionnels)
 
@@ -114,6 +114,10 @@ three.js (`GLTFLoader`), `os` devient un `SkinnedMesh` lié aux nœuds d'articul
 - de ne pas supposer que `os` est un `Mesh` simple (le lancer de rayon de three.js sur un `SkinnedMesh` teste la
   pose courante).
 
+Depuis la 1.8.0, les autres maillages (muscles, artères, veines, nerfs, organes, peau) partagent la même peau
+(`skin: 0`) : tout le corps suit les mouvements. Les mêmes précautions valent pour chacun d'eux (`rig.skinned`
+les liste).
+
 - **Os rigides.** Chaque structure du maillage `os` est liée tout entière à une seule articulation (`JOINTS_0` =
   l'articulation, `WEIGHTS_0` = 1) : un os ne se déforme jamais. Les dents suivent le crâne ou la mandibule, la
   patella a sa propre articulation (elle suit le genou sur la trochlée puis les condyles, voir plus bas), le carpe, le
@@ -143,7 +147,27 @@ three.js (`GLTFLoader`), `os` devient un `SkinnedMesh` lié aux nœuds d'articul
   à faire valider comme les repères.
 - **Repos.** La rotation de repos de chaque articulation est l'identité et sa translation est l'écart entre son
   centre et celui de son parent : les axes locaux sont ceux du repère du modèle en position anatomique. Les
-  `inverseBindMatrices` sont des translations de `-centre`. Le nœud `os` porte `skin: 0` (`skeleton` = la racine).
+  `inverseBindMatrices` sont des translations de `-centre`. Le nœud `os` porte `skin: 0` (`skeleton` = la racine),
+  comme, depuis la 1.8.0, les nœuds des autres systèmes.
+- **Parties molles (1.8.0)** : chaque sommet des muscles, vaisseaux, nerfs et organes suit les articulations des os
+  les plus proches de lui, avec un poids en (distance à l'os le plus proche / distance aux os de l'articulation)⁴,
+  4 articulations au plus : un sommet collé à un os le suit seul, un sommet entre deux os (autour d'une
+  articulation) se partage entre eux et s'étire avec le mouvement. Une structure ne suit que les articulations
+  proches, dans l'arbre, de la sienne (celle dont les os sont les plus proches de la majorité de ses sommets ; deux
+  liens au plus, un lien entre deux articulations du rachis comptant pour 0,2, jamais une articulation du côté
+  opposé), ou les plus proches d'au moins 10 % de ses sommets : un muscle de l'avant-bras ne suit pas l'os coxal
+  qu'il frôle, mais les muscles de l'abdomen suivent le thorax et le bassin. Un sommet suit toujours un os à moins
+  de 1,5 cm de lui : l'extrémité de la veine céphalique suit le poignet, comme les veines de la main qu'elle
+  rejoint (au-delà, un tel os s'efface vite, continûment). La peau, d'une seule structure pour tout le corps, prend les poids du muscle le plus proche de chacun de
+  ses sommets. Sans le thorax (`upper_limb`), les structures dont au moins un quart des sommets sont à plus de 4 cm
+  de tout os (muscles du tronc : grand dorsal, grand pectoral, trapèze…) suivent aussi la racine, immobile, comme
+  si les os manquants étaient à 4 cm : leur partie sur le tronc reste en place et elles s'étirent jusqu'au bras.
+  Les poids varient continûment avec les distances aux os, sans lissage, si bien que deux structures qui se touchent
+  (un vaisseau et sa branche) ont les mêmes poids à leur jonction et ne s'écartent pas. Ceux de la peau, pris au
+  muscle le plus proche, sont lissés sur son maillage (3 passes de moyenne entre voisins) pour éviter une couture
+  là où ce muscle change. C'est un *skinning* linéaire sans muscles
+  qui se contractent : un pli d'articulation s'aplatit, un muscle qui croise l'articulation s'étire ou se
+  comprime, sans glisser sur l'os.
 - **Mouvements** : une animation glTF par mouvement, nommée par sa clé ; rotations des articulations
   (quaternions, `LINEAR`, 24 images par seconde) et, pour la marche, translation verticale de la racine (le point
   le plus bas des deux pieds, sur tous leurs sommets, reste au niveau du sol de la position de repos ; cette
@@ -178,12 +202,13 @@ three.js (`GLTFLoader`), `os` devient un `SkinnedMesh` lié aux nœuds d'articul
 | `ouverture-bouche` | Ouverture de la bouche (25°) | `mandibule` | ✓ | |
 | `marche` | Marche simplifiée, sur place (3 cycles) | hanches, genoux, patellas, chevilles, épaules, coudes, `squelette` | ✓ | |
 
-Les mouvements d'un côté sont joués à droite. Les autres systèmes (muscles, vaisseaux, nerfs…) n'ont pas de peau :
-ils ne suivent pas les os, et l'app les cache pendant un mouvement.
+Les mouvements d'un côté sont joués à droite. Jusqu'à la 1.7.0, les autres systèmes n'avaient pas de peau et ne
+suivaient pas les os ; depuis la 1.8.0, ils les suivent (`rig.skinned`).
 
-Coût : 8 octets par sommet du maillage `os` (`JOINTS_0` + `WEIGHTS_0`), plus les animations : +0,31 Mo pour
+Coût : 8 octets par sommet (`JOINTS_0` + `WEIGHTS_0`) de chaque maillage à peau, plus les animations : +0,31 Mo pour
 `upper_limb` (6 articulations, 5 mouvements), +0,67 Mo pour `full_body` (35 articulations, 15 mouvements), soit
-1 à 1,5 % du fichier.
+1 à 1,5 % du fichier en 1.7.0 (os seuls). Les parties molles ajoutent 8 octets par sommet en 1.8.0 : +8,2 Mo pour
+`full_body` (59,5 → 67,7 Mo, environ un million de sommets), +2,6 Mo pour `upper_limb` (20,4 → 23,0 Mo).
 
 ## Licence de chaque modèle
 
@@ -226,6 +251,7 @@ sans les supposer identiques d'un modèle à l'autre.
   ],
   "rig": {                        // optionnel (1.7.0) : squelette articulé, voir plus haut
     "node": "os",
+    "skinned": ["os", "muscles", "arteres", "veines", "nerfs", "organes", "peau"],  // 1.8.0 : nœuds à peau, os d'abord
     "joints": [                   // dans l'ordre des joints de la peau glTF, parents d'abord ; racine en premier
       {"name": "squelette", "fr": "Squelette", "parent": null, "pivot": [0, 0, 0], "structures": []},
       {"name": "coude-d", "fr": "Coude droit", "parent": "epaule-d", "pivot": [-0.232, 1.046, 0.07],
@@ -339,9 +365,10 @@ Jusqu'à la v1.0.0, seul `upper_limb` avait des repères (12, sur l'humérus) et
   `Object3D.clone` garde le squelette de l'original). Jouer un mouvement : `AnimationMixer` sur la scène, puis
   `mixer.setTime(t)` à chaque image tant que `t < duration` ; à la fin, `mixer.stopAllAction()` remet la position de
   repos. Coût par image : une trentaine de pistes interpolées et autant de matrices d'os, le skinning sur GPU des
-  64 000 sommets du maillage `os` (`full_body`). La sélection reste un lancer de rayon sur les positions au repos :
-  ramener le rayon dans le repère de repos de l'os touché (inverse de `bone.matrixWorld × inverseBindMatrix`, rigide)
-  suffit, puisque chaque os suit une seule articulation (`rig.joints[].structures`).
+  64 000 sommets du maillage `os` (`full_body`), et du million de sommets des autres maillages quand ils sont
+  affichés. La sélection reste un lancer de rayon sur les positions au repos : ramener le rayon dans le repère de
+  repos de l'os touché (inverse de `bone.matrixWorld × inverseBindMatrix`, rigide) suffit pour les os, puisque chaque
+  os suit une seule articulation (`rig.joints[].structures`) ; une partie molle, elle, se déforme.
 - **Fibres** : si `geometry.attributes._fiber` existe, three.js le lit normalisé (`vec3` dans [-1, 1]) et
   `_tendon` comme un `float` dans [0, 1] ; les positions sont en mètres dans l'espace objet, ce qui fixe la
   fréquence d'un bruit procédural.

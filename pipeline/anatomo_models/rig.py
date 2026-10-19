@@ -754,3 +754,139 @@ def animation_pose(rig, anim, time):
             r = (1 - u) * a + u * b
         out.setdefault(c["joint"], {})[c["path"]] = r
     return out
+
+
+# --- Soft tissues -------------------------------------------------------------------------------------------------
+
+SOFT_POWER = 4  # weight of a joint ~ (distance to the nearest bone / distance to its bones) ** SOFT_POWER
+SOFT_HOPS = 2  # a structure follows only the joints at most this many links from its own joint in the tree (_hops)
+SOFT_SHARE = 0.1  # ... or whose bones are the nearest to at least this share of its vertices
+SOFT_KEEP = 0.015  # ... and, for each vertex, those whose bones are this close to it (m)
+SOFT_STILL = 0.04  # without the trunk's bones, a trunk muscle's vertex this far from a bone stays still (m)
+SOFT_STILL_SHARE = 0.25  # a trunk muscle: at least this share of its vertices farther than SOFT_STILL from a bone
+SOFT_SMOOTH = 3  # passes of averaging the envelope's weights over each vertex's mesh neighbours
+
+
+SPINE = re.compile(r"^(bassin|lombaire-\d|thorax|cervicale-\d|atlas|tete)$")
+SPINE_LINK = 0.2  # a link between two joints of the spine counts as this fraction of a link
+
+
+def _hops(joints):
+    """Links between every two joints of the tree, a link between two joints of the spine counting SPINE_LINK: the
+    pelvis is as close to the thorax as the shoulder is, through five lumbar joints. Joints of opposite sides are
+    out of reach (inf): a thigh muscle does not follow the other hip."""
+    n = len(joints)
+    adj = [[] for _ in range(n)]
+    for i, j in enumerate(joints):
+        if j["parent"] is not None:
+            p = j["parent"]
+            cost = SPINE_LINK if SPINE.match(j["name"]) and SPINE.match(joints[p]["name"]) else 1.0
+            adj[i].append((p, cost))
+            adj[p].append((i, cost))
+    out = np.full((n, n), np.inf)
+    for s in range(n):  # a tree: one path between two joints
+        out[s, s], todo = 0.0, [s]
+        while todo:
+            a = todo.pop()
+            for b, cost in adj[a]:
+                if not np.isfinite(out[s, b]):
+                    out[s, b] = out[s, a] + cost
+                    todo.append(b)
+    side = np.array([j["name"][-2:] if j["name"][-2:] in ("-d", "-g") else "" for j in joints])
+    out[(side[:, None] != "") & (side[None, :] != "") & (side[:, None] != side[None, :])] = np.inf
+    return out
+
+
+class SoftSkin:
+    """Skins of the soft-tissue meshes (muscles, vessels, nerves, organs, skin): each vertex follows the joints of the
+    bones nearest to it, blended where bones of two joints are at similar distances (around a joint), with up to 4
+    joints per vertex.
+
+    A structure follows only the joints close in the tree (SOFT_HOPS) to its own joint, the one whose bones are
+    nearest to most of its vertices, and the joints whose bones are the nearest to a good share of its vertices
+    (SOFT_SHARE: the abdominal muscles, between the ribs and the pelvis): a forearm muscle never follows the hip
+    bone it passes close to. A vertex still follows any bone within SOFT_KEEP of it: the hand end of the cephalic
+    vein follows the wrist, as the veins of the hand it joins do. The envelope
+    (skin, eyebrows, hair) cannot be held that way, as the whole skin is one structure: each of its vertices takes
+    the weights of the nearest vertex of the tissues under it (muscles), which hug their own bones.
+
+    A model without the trunk's bones (the upper limb: no thorax under the girdle) still has the trunk's muscles
+    that move the arm (pectoralis major, latissimus dorsi...): in the structures with a good share of vertices
+    farther than SOFT_STILL from any bone (SOFT_STILL_SHARE), the missing bones are stood for by the root, which does
+    not move, at SOFT_STILL from every vertex. Their part on the trunk stays still, and they stretch up to the arm.
+    (A structure of the arm far from the humerus, the posterior cutaneous nerve of the arm, also lags behind.)
+    """
+
+    def __init__(self, rig, os_positions):
+        from scipy.spatial import cKDTree
+        self.joints, vj = rig["joints"], np.asarray(rig["vertex_joint"])
+        self.bone = [k for k in range(len(self.joints)) if np.any(vj == k)]
+        os_positions = np.asarray(os_positions, float)
+        self.trees = [cKDTree(os_positions[vj == k]) for k in self.bone]
+        self.hops = _hops(self.joints)[np.ix_(self.bone, self.bone)]
+        # A joint hanging from the root, though its parent is another joint: that joint's bones are not in the model.
+        base = [re.sub(r"-[dg]$", "", j["name"]) for j in self.joints]
+        self.still = any(j["parent"] == 0 and JOINTS[b][1] != base[0] for j, b in zip(self.joints[1:], base[1:]))
+        self.columns = self.bone + [0] if self.still else self.bone  # joint of each column of the weights
+        self.under = []  # (positions, dense weights) of the meshes skinned so far, for the envelope
+
+    def dense(self, positions, structures):
+        """(N, columns) weights summing to 1, before smoothing."""
+        p = np.asarray(positions, float)
+        dist = np.empty((len(p), len(self.bone)))
+        for c, tree in enumerate(self.trees):
+            dist[:, c] = np.maximum(tree.query(p, workers=-1)[0], 0.002)
+        w, still = np.zeros_like(dist), np.zeros(len(p))
+        for v0, n in structures:
+            d = dist[v0:v0 + n].copy()
+            share = np.bincount(d.argmin(1), minlength=len(self.bone)) / n
+            far = (self.hops[share.argmax()] > SOFT_HOPS) & (share < SOFT_SHARE)
+            # Beyond SOFT_KEEP, such a bone fades out fast (continuously: no seam where it crosses SOFT_KEEP).
+            d[:, far] *= np.maximum(d[:, far] / SOFT_KEEP, 1) ** 4
+            near = d.min(1, keepdims=True)
+            w[v0:v0 + n] = (near / d) ** SOFT_POWER
+            if self.still and np.mean(near > SOFT_STILL) >= SOFT_STILL_SHARE:
+                # A trunk muscle (a good share of it far from every bone): the root's column, as if the missing
+                # bones were SOFT_STILL away.
+                still[v0:v0 + n] = (near[:, 0] / SOFT_STILL) ** SOFT_POWER
+        if self.still:
+            w = np.c_[w, still]
+        return w / w.sum(1, keepdims=True)
+
+    def weights(self, positions, indices, structures, envelope=False, muscles=False):
+        """Skin of a mesh: positions (N,3), indices (M,3), structures [(first vertex, count)] covering the mesh;
+        `muscles`: the mesh the envelope takes its weights from (skin it before the envelope).
+        Returns (joints (N,4) uint8, weights (N,4) uint8 summing to 255)."""
+        from scipy.sparse import coo_matrix
+        from scipy.spatial import cKDTree
+        p = np.asarray(positions, float)
+        if envelope:
+            if not self.under:
+                raise RigError("the envelope is skinned from the tissues under it: skin the muscles first")
+            src = np.concatenate([u[0] for u in self.under])
+            w = np.concatenate([u[1] for u in self.under])[cKDTree(src).query(p, workers=-1)[1]]
+            self.under = []
+            # Smoothing over the mesh: no seam where the nearest muscle changes. (The other meshes need none: their
+            # weights vary continuously with the distances to the bones, and smoothing over a tube's long edges
+            # would set two touching structures apart, a vessel and its branch.)
+            f = np.asarray(indices).reshape(-1, 3)
+            i = np.r_[f[:, 0], f[:, 1], f[:, 2], f[:, 1], f[:, 2], f[:, 0], np.arange(len(p))]
+            j = np.r_[f[:, 1], f[:, 2], f[:, 0], f[:, 0], f[:, 1], f[:, 2], np.arange(len(p))]
+            a = coo_matrix((np.ones(len(i)), (i, j)), shape=(len(p), len(p))).tocsr()
+            a.data[:] = 1
+            deg = np.asarray(a.sum(1))
+            for _ in range(SOFT_SMOOTH):
+                w = (a @ w) / deg
+        else:
+            w = self.dense(p, structures)
+        if muscles:
+            self.under.append((p, w))
+        # The 4 heaviest joints, renormalised, quantised to bytes that sum to 255.
+        top = np.argsort(-w, 1)[:, :4]
+        tw = np.take_along_axis(w, top, 1)
+        tw /= tw.sum(1, keepdims=True)
+        q = np.floor(tw * 255).astype(int)
+        q[:, 0] += 255 - q.sum(1)
+        out = np.asarray(self.columns)[top]
+        out[q == 0] = 0
+        return out.astype(np.uint8), q.astype(np.uint8)

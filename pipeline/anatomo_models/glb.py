@@ -11,7 +11,8 @@ mask in [0, 1] (SCALAR, normalized UNSIGNED_BYTE), each in its own bufferView wi
 
 Optional (bones, see rig.py): a skin. The `os` mesh then has JOINTS_0 (VEC4 UNSIGNED_BYTE, the joint first, then
 zeros) and WEIGHTS_0 (VEC4 normalized UNSIGNED_BYTE, 1 0 0 0: rigid bones), the joints are nodes after the system
-nodes, and the movements are animations of their rotations.
+nodes, and the movements are animations of their rotations. The other meshes share the skin, with up to 4 joints
+per vertex (weights summing to 255, the heaviest first).
 """
 import json
 import struct
@@ -88,6 +89,13 @@ def write_glb(path, primitives, copyright=None, extras=None, rig=None):
             joints[:, 0] = vj
             weights = np.zeros((len(pos), 4), np.uint8)
             weights[:, 0] = 255
+        elif rig is not None and p["name"] in rig.get("soft", {}):
+            joints, weights = rig["soft"][p["name"]]
+            assert joints.shape == weights.shape == (len(pos), 4) and joints.max() < len(rig["joints"])
+            assert np.all(weights.sum(1, dtype=int) == 255)
+        else:
+            joints = None
+        if joints is not None:
             attrs["JOINTS_0"] = add(joints, UBYTE, "VEC4", ARRAY_BUFFER)
             attrs["WEIGHTS_0"] = add(weights, UBYTE, "VEC4", ARRAY_BUFFER, normalized=True)
         ind = add(idx, UINT, "SCALAR", ELEMENT_ARRAY_BUFFER)
@@ -98,7 +106,8 @@ def write_glb(path, primitives, copyright=None, extras=None, rig=None):
             {"attributes": attrs, "indices": ind, "material": i, "mode": 4}]})
         gltf["nodes"].append({"name": p["name"], "mesh": i})
     if rig is not None:
-        _write_rig(gltf, rig, add, [n["name"] for n in gltf["nodes"]].index("os"))
+        names = [n["name"] for n in gltf["nodes"]]
+        _write_rig(gltf, rig, add, [names.index(n) for n in ["os", *rig.get("soft", {})]])
     gltf["buffers"].append({"byteLength": len(blob)})
 
     js = _pad(json.dumps(gltf, ensure_ascii=False, separators=(",", ":")).encode(), b" ")
@@ -109,8 +118,8 @@ def write_glb(path, primitives, copyright=None, extras=None, rig=None):
         f.write(struct.pack("<II", len(blob), CHUNK_BIN) + bytes(blob))
 
 
-def _write_rig(gltf, rig, add, os_node):
-    """Joint nodes (after the system nodes), the skin of the os node and the animations."""
+def _write_rig(gltf, rig, add, skinned):
+    """Joint nodes (after the system nodes), the skin of the skinned nodes (os first) and the animations."""
     first = len(gltf["nodes"])
     joints = rig["joints"]
     for i, j in enumerate(joints):
@@ -131,7 +140,8 @@ def _write_rig(gltf, rig, add, os_node):
     acc = add(ibm.transpose(0, 2, 1).reshape(len(joints), 16), FLOAT, "MAT4", None)
     gltf["skins"] = [{"name": "squelette", "inverseBindMatrices": acc, "skeleton": roots[0],
                       "joints": list(range(first, first + len(joints)))}]
-    gltf["nodes"][os_node]["skin"] = 0
+    for node in skinned:
+        gltf["nodes"][node]["skin"] = 0
     anims = []
     for a in rig["animations"]:
         samplers, channels, inputs = [], [], {}
