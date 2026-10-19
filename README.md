@@ -26,6 +26,13 @@ Chaque modèle a **un maillage par système** au lieu d'un maillage par structur
 en avait 2 234 pour le corps entier), et garde la sélection structure par structure grâce à un
 indice de structure par sommet. Le format est décrit dans [`docs/FORMAT.md`](docs/FORMAT.md).
 
+Depuis la 1.7.0, le squelette est articulé : le maillage des os porte une peau glTF (chaque os rigide, lié à une
+articulation placée sur la géométrie et les repères osseux) et des animations, les mouvements (flexion du coude,
+abduction des épaules, marche simplifiée…), qui partent de la position anatomique et y reviennent
+(`pipeline/anatomo_models/rig.py`, [`docs/FORMAT.md`](docs/FORMAT.md#squelette-articulé-et-mouvements-rig-optionnel)).
+Avec three.js, le maillage `os` est donc un `SkinnedMesh` : copier la scène avec `SkeletonUtils.clone`, pas
+`Object3D.clone`.
+
 ## Construire
 
 ```sh

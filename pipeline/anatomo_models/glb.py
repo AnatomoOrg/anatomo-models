@@ -8,6 +8,10 @@ three.js exposes it as `geometry.attributes._structure`.
 
 Optional (muscles): `_FIBER`, the unit fibre direction (VEC3, normalized BYTE), and `_TENDON`, the tendon
 mask in [0, 1] (SCALAR, normalized UNSIGNED_BYTE), each in its own bufferView with a 4-byte stride.
+
+Optional (bones, see rig.py): a skin. The `os` mesh then has JOINTS_0 (VEC4 UNSIGNED_BYTE, the joint first, then
+zeros) and WEIGHTS_0 (VEC4 normalized UNSIGNED_BYTE, 1 0 0 0: rigid bones), the joints are nodes after the system
+nodes, and the movements are animations of their rotations.
 """
 import json
 import struct
@@ -23,9 +27,10 @@ def _pad(b, fill=b"\0"):
     return b + fill * (-len(b) % 4)
 
 
-def write_glb(path, primitives, copyright=None, extras=None):
+def write_glb(path, primitives, copyright=None, extras=None, rig=None):
     """primitives: list of dicts {name, positions (N,3), normals (N,3), structure (N,), indices (M,3), color (r,g,b)},
-    and optionally fiber (N,3) unit vectors and tendon (N,) in [0, 1]."""
+    and optionally fiber (N,3) unit vectors and tendon (N,) in [0, 1].
+    rig: optional skin of the `os` primitive, from rig.build_rig (its vertex_joint matches the os vertices)."""
     gltf = {
         "asset": {"version": "2.0", "generator": "anatomo-models pipeline"},
         "scene": 0, "scenes": [{"nodes": list(range(len(primitives)))}],
@@ -40,7 +45,9 @@ def write_glb(path, primitives, copyright=None, extras=None):
 
     def add(array, component, kind, target, minmax=False, stride=None, normalized=False):
         data = np.ascontiguousarray(array).tobytes()
-        view = {"buffer": 0, "byteOffset": len(blob), "byteLength": len(data), "target": target}
+        view = {"buffer": 0, "byteOffset": len(blob), "byteLength": len(data)}
+        if target:
+            view["target"] = target
         if stride:
             view["byteStride"] = stride
         gltf["bufferViews"].append(view)
@@ -74,6 +81,15 @@ def write_glb(path, primitives, copyright=None, extras=None):
             ten[:, 0] = np.round(np.clip(np.asarray(p["tendon"], float), 0, 1) * 255)
             attrs["_FIBER"] = add(fib, BYTE, "VEC3", ARRAY_BUFFER, stride=4, normalized=True)
             attrs["_TENDON"] = add(ten, UBYTE, "SCALAR", ARRAY_BUFFER, stride=4, normalized=True)
+        if rig is not None and p["name"] == "os":
+            vj = np.asarray(rig["vertex_joint"])
+            assert len(vj) == len(pos) and vj.max() < len(rig["joints"]) <= 256
+            joints = np.zeros((len(pos), 4), np.uint8)
+            joints[:, 0] = vj
+            weights = np.zeros((len(pos), 4), np.uint8)
+            weights[:, 0] = 255
+            attrs["JOINTS_0"] = add(joints, UBYTE, "VEC4", ARRAY_BUFFER)
+            attrs["WEIGHTS_0"] = add(weights, UBYTE, "VEC4", ARRAY_BUFFER, normalized=True)
         ind = add(idx, UINT, "SCALAR", ELEMENT_ARRAY_BUFFER)
         r, g, b = p.get("color", (0.8, 0.8, 0.8))
         gltf["materials"].append({"name": p["name"], "pbrMetallicRoughness": {
@@ -81,6 +97,8 @@ def write_glb(path, primitives, copyright=None, extras=None):
         gltf["meshes"].append({"name": p["name"], "primitives": [
             {"attributes": attrs, "indices": ind, "material": i, "mode": 4}]})
         gltf["nodes"].append({"name": p["name"], "mesh": i})
+    if rig is not None:
+        _write_rig(gltf, rig, add, [n["name"] for n in gltf["nodes"]].index("os"))
     gltf["buffers"].append({"byteLength": len(blob)})
 
     js = _pad(json.dumps(gltf, ensure_ascii=False, separators=(",", ":")).encode(), b" ")
@@ -91,12 +109,53 @@ def write_glb(path, primitives, copyright=None, extras=None):
         f.write(struct.pack("<II", len(blob), CHUNK_BIN) + bytes(blob))
 
 
+def _write_rig(gltf, rig, add, os_node):
+    """Joint nodes (after the system nodes), the skin of the os node and the animations."""
+    first = len(gltf["nodes"])
+    joints = rig["joints"]
+    for i, j in enumerate(joints):
+        offset = j["pivot"] - (joints[j["parent"]]["pivot"] if j["parent"] is not None else 0)
+        node = {"name": j["name"]}
+        if np.any(offset != 0):
+            node["translation"] = [float(x) for x in np.float32(offset)]
+        children = [first + k for k, c in enumerate(joints) if c["parent"] == i]
+        if children:
+            node["children"] = children
+        gltf["nodes"].append(node)
+    roots = [first + i for i, j in enumerate(joints) if j["parent"] is None]
+    assert len(roots) == 1
+    gltf["scenes"][0]["nodes"].append(roots[0])
+    # Inverse bind matrices (column-major): a translation by -pivot, the joints' rest rotation being the identity.
+    ibm = np.tile(np.eye(4, dtype=np.float32), (len(joints), 1, 1))
+    ibm[:, :3, 3] = -np.array([j["pivot"] for j in joints], np.float32)
+    acc = add(ibm.transpose(0, 2, 1).reshape(len(joints), 16), FLOAT, "MAT4", None)
+    gltf["skins"] = [{"name": "squelette", "inverseBindMatrices": acc, "skeleton": roots[0],
+                      "joints": list(range(first, first + len(joints)))}]
+    gltf["nodes"][os_node]["skin"] = 0
+    anims = []
+    for a in rig["animations"]:
+        samplers, channels, inputs = [], [], {}
+        for c in a["channels"]:
+            times = np.asarray(c["times"], np.float32)
+            key = times.tobytes()
+            if key not in inputs:
+                inputs[key] = add(times[:, None], FLOAT, "SCALAR", None, minmax=True)
+            values = np.asarray(c["values"], np.float32)
+            out = add(values, FLOAT, "VEC4" if c["path"] == "rotation" else "VEC3", None)
+            samplers.append({"input": inputs[key], "output": out, "interpolation": "LINEAR"})
+            channels.append({"sampler": len(samplers) - 1, "target": {"node": first + c["joint"], "path": c["path"]}})
+        anims.append({"name": a["key"], "samplers": samplers, "channels": channels})
+    if anims:
+        gltf["animations"] = anims
+
+
 _DTYPES = {BYTE: np.int8, UBYTE: np.uint8, FLOAT: np.float32, USHORT: np.uint16, UINT: np.uint32}
-_WIDTH = {"SCALAR": 1, "VEC3": 3}
+_WIDTH = {"SCALAR": 1, "VEC3": 3, "VEC4": 4, "MAT4": 16}
 
 
-def read_glb(path):
-    """Read a .glb written by write_glb. Returns (gltf json, {node name: {attribute: array, 'indices': (M,3)}}).
+def read_glb(path, with_accessors=False):
+    """Read a .glb written by write_glb. Returns (gltf json, {node name: {attribute: array, 'indices': (M,3)}}) for
+    the mesh nodes, and with_accessors, a function reading any accessor by index as a third item.
     Normalized attributes are returned as floats (BYTE / 127, UNSIGNED_BYTE / 255)."""
     raw = open(path, "rb").read()
     magic, version, total = struct.unpack_from("<III", raw)
@@ -118,8 +177,10 @@ def read_glb(path):
 
     out = {}
     for node in gltf["nodes"]:
+        if "mesh" not in node:
+            continue  # joint
         prim = gltf["meshes"][node["mesh"]]["primitives"][0]
         d = {k: acc(i) for k, i in prim["attributes"].items()}
         d["indices"] = acc(prim["indices"]).reshape(-1, 3)
         out[node["name"]] = d
-    return gltf, out
+    return (gltf, out, acc) if with_accessors else (gltf, out)

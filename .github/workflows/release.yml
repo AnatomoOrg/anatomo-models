@@ -102,6 +102,7 @@ jobs:
             echo "upper_limb et full_body : CC BY-SA 4.0. Voir LICENSE et CREDITS.md."
             echo "Identifiants changés en 1.5.0 (full_body) : FMA7376 → FMA8642, FMA7377 → FMA8644, FMA7365 → FMA9422, FMA7386 → FMA9438 (vaisseaux pulmonaires segmentaires, voir docs/NOMS.md)."
             echo "Changés en 1.6.0 (full_body) : source de FMA4754/FMA4762 (veines jugulaires internes) → bodyparts3d-4.0+z-anatomy ; FMA6259/FMA6260 (troncs sympathiques) → open3dmodel+z-anatomy, nom français « Tronc sympathique »."
+            echo "Depuis 1.7.0, le maillage os est un maillage à peau glTF (squelette articulé, animations) : avec three.js, c'est un SkinnedMesh. Les apps qui copient la scène doivent passer de Object3D.clone à SkeletonUtils.clone (sinon la copie garde le squelette de l'original), et mettre frustumCulled = false sur os pendant un mouvement. Voir docs/FORMAT.md."
             echo "upper-limb-obj.zip, lower-limb-obj.zip : copies non modifiées des sources Open3DModel (exports OBJ, géométrie seule, CC BY-SA 4.0), épinglées par pipeline/open3d.sha256."
             echo
             echo '```'

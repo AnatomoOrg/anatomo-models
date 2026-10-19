@@ -17,7 +17,7 @@ from anatomo_models.landmarks import KINDS  # noqa: E402
 
 def check(manifest_path):
     m = json.load(open(manifest_path, encoding="utf-8"))
-    gltf, nodes = read_glb(os.path.join(os.path.dirname(manifest_path), m["glb"]))
+    gltf, nodes, accessor = read_glb(os.path.join(os.path.dirname(manifest_path), m["glb"]), with_accessors=True)
     assert gltf["asset"]["copyright"] == m["attribution"]
     assert gltf["asset"].get("extras", {}).get("license") == m["license"]
     # Geometry only: some source textures (Open3DModel) are under a non-commercial licence.
@@ -30,6 +30,9 @@ def check(manifest_path):
         sid, tri = n["_STRUCTURE"], n["indices"]
         assert len(n["POSITION"]) == len(sid) == sys_["vertices"] and len(tri) == sys_["triangles"]
         assert np.all(np.isfinite(n["POSITION"])) and np.allclose(np.linalg.norm(n["NORMAL"], axis=1), 1, atol=1e-3)
+        if "JOINTS_0" in n or "WEIGHTS_0" in n:  # optional, os only
+            assert sys_["key"] == "os" and "JOINTS_0" in n and "WEIGHTS_0" in n, f"{sys_['key']}: skin attributes"
+            assert "rig" in m, "the os mesh has a skin (JOINTS_0) but the manifest has no rig section"
         if "_FIBER" in n or "_TENDON" in n:  # optional, muscles only
             assert sys_["key"] == "muscles" and "_FIBER" in n and "_TENDON" in n, sys_["key"]
             assert len(n["_FIBER"]) == len(n["_TENDON"]) == len(sid)
@@ -48,13 +51,82 @@ def check(manifest_path):
             p = n["POSITION"][v0:v0 + vn]
             assert np.allclose(p.min(0), s["bbox"][0], atol=1e-5) and np.allclose(p.max(0), s["bbox"][1], atol=1e-5)
         assert v_end == sys_["vertices"] and t_end == sys_["triangles"]
+    rig = check_rig(m, gltf, nodes, accessor) if "rig" in m or "skins" in gltf else ""
     tris = sum(s["triangles"] for s in m["systems"])
     missing_fr = sum(s["fr"] is None for s in m["structures"])
     marks = check_landmarks(m, manifest_path.removesuffix(".json") + ".landmarks.json")
     worst = check_junctions(m, nodes, JUNCTIONS.get(m["model"], []))
     print(f"{manifest_path}: OK ({len(m['structures'])} structures, {tris} triangles, "
           f"{len(nodes)} meshes, {missing_fr} without French name, {marks} landmarks, "
-          f"{len(JUNCTIONS.get(m['model'], []))} vascular junctions, widest {worst:.2f} mm)")
+          f"{len(JUNCTIONS.get(m['model'], []))} vascular junctions, widest {worst:.2f} mm{rig})")
+
+
+def check_rig(m, gltf, nodes, accessor):
+    """Skin of the os mesh: every bone bound whole to the joint the manifest gives it, joints and movements of the
+    manifest are the glb's nodes and animations, and each movement starts and ends in the anatomical position."""
+    assert "rig" in m, "the glb has a skin (skins) but the manifest has no rig section"
+    assert len(gltf.get("skins", [])) == 1, "the manifest has a rig section but the glb has no skin (or several)"
+    rig = m["rig"]
+    names = [j["name"] for j in rig["joints"]]
+    skin, = gltf["skins"]
+    node_names = [gltf["nodes"][i]["name"] for i in skin["joints"]]
+    assert node_names == names, "skin joints differ from the manifest"
+    os_node = next(n for n in gltf["nodes"] if n.get("mesh") is not None and n["name"] == rig["node"])
+    assert os_node.get("skin") == 0 and sum("skin" in n for n in gltf["nodes"]) == 1
+    os_ = nodes[rig["node"]]
+    joint, weight = os_["JOINTS_0"], os_["WEIGHTS_0"]
+    assert np.all(weight[:, 0] == 1) and np.all(weight[:, 1:] == 0) and np.all(joint[:, 1:] == 0)
+    bound = {}
+    for k, j in enumerate(rig["joints"]):
+        assert (j["parent"] is None) == (k == 0) and (j["parent"] is None or names.index(j["parent"]) < k), j["name"]
+        for sid in j["structures"]:
+            assert sid not in bound, sid
+            bound[sid] = k
+    bones = [s for s in m["structures"] if s["system"] == rig["node"]]
+    assert set(bound) == {s["id"] for s in bones}, "bones without a joint, or joints binding other structures"
+    for s in bones:
+        v0, vn = s["vertices"]
+        assert np.all(joint[v0:v0 + vn, 0] == bound[s["id"]]), s["id"]
+    # Joint nodes at rest: no rotation or scale, and their translations add up, from the root, to the pivots.
+    pivot_of = {}
+    for i, name in zip(skin["joints"], names):
+        node = gltf["nodes"][i]
+        assert "rotation" not in node and "scale" not in node and "matrix" not in node, f"{name}: not at rest"
+        children = [gltf["nodes"][c]["name"] for c in node.get("children", [])]
+        assert all(c in names for c in children), f"{name}: a child is not a joint"
+        j = rig["joints"][names.index(name)]
+        base = pivot_of[j["parent"]] if j["parent"] is not None else np.zeros(3)
+        if j["parent"] is not None:
+            parent_node = gltf["nodes"][skin["joints"][names.index(j["parent"])]]
+            assert i in parent_node.get("children", []), f"{name}: not a child of {j['parent']} in the glb"
+        pivot_of[name] = base + np.asarray(node.get("translation", [0, 0, 0]), float)
+        assert np.allclose(pivot_of[name], j["pivot"], atol=1e-5), f"{name}: node translations do not add up to its pivot"
+    root = skin["joints"][0]
+    assert any(root in sc.get("nodes", []) for sc in gltf["scenes"]), "the joint tree's root is not in the scene"
+    # Inverse bind matrices: a translation by -pivot.
+    ibm = accessor(skin["inverseBindMatrices"]).reshape(-1, 4, 4).transpose(0, 2, 1)
+    pivots = np.array([j["pivot"] for j in rig["joints"]])
+    assert np.allclose(ibm[:, :3, :3], np.eye(3)) and np.allclose(ibm[:, :3, 3], -pivots, atol=1e-5)
+    anims = {a["name"]: a for a in gltf.get("animations", [])}
+    assert [mv["key"] for mv in rig["movements"]] == list(anims), "movements differ from the glb animations"
+    for mv in rig["movements"]:
+        a = anims[mv["key"]]
+        moved = set()
+        for c in a["channels"]:
+            sampler = a["samplers"][c["sampler"]]
+            t, v = accessor(sampler["input"]), accessor(sampler["output"])
+            node = gltf["nodes"][c["target"]["node"]]
+            moved.add(node["name"])
+            assert np.all(np.diff(t) > 0) and t[0] == 0 and abs(t[-1] - mv["duration"]) < 1e-4, mv["key"]
+            if c["target"]["path"] == "rotation":
+                assert np.allclose(np.linalg.norm(v, axis=1), 1, atol=1e-5), mv["key"]
+                assert np.allclose(v[[0, -1]], [0, 0, 0, 1]), f"{mv['key']}: does not start and end at rest"
+            else:
+                assert c["target"]["path"] == "translation", mv["key"]
+                rest = np.asarray(node.get("translation", [0, 0, 0]))
+                assert np.allclose(v[[0, -1]], rest, atol=1e-6), f"{mv['key']}: does not start and end at rest"
+        assert moved == set(mv["joints"]), mv["key"]
+    return f", {len(names)} joints, {len(anims)} movements"
 
 
 def structure_mesh(s, nodes):

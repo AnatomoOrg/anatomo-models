@@ -21,6 +21,9 @@ osseux sont dans ce repère.
 Un nœud, un maillage et une seule primitive (triangles indexés, index `uint32`) par système
 anatomique. L'ordre des nœuds suit l'ordre d'affichage : `os`, `muscles`, `arteres`, `veines`,
 `nerfs`, `organes`, `peau` (les systèmes vides sont omis). Le nom du nœud est la clé du système.
+Depuis la 1.7.0, les nœuds des articulations du squelette suivent les nœuds des systèmes (sans maillage, voir
+[Squelette articulé et mouvements](#squelette-articulé-et-mouvements-rig-optionnel)) : un lecteur cherche les
+systèmes par leur nom, pas par leur rang.
 
 ### Systèmes
 
@@ -48,6 +51,8 @@ Attributs de sommet :
 | `_STRUCTURE` | `_structure` | `float` | Indice de la structure dans le manifeste (entier exact) |
 | `_FIBER` | `_fiber` | `vec3` byte normalisé | Direction des fibres musculaires (unitaire, tangente à la surface lissée, sans sens) ; `muscles` seulement, optionnel |
 | `_TENDON` | `_tendon` | `float` (ubyte normalisé) | Masque tendon : 0 = charnu, 1 = tendon ; `muscles` seulement, optionnel |
+| `JOINTS_0` | `skinIndex` | `vec4` ubyte | Articulation qui porte le sommet, puis 0, 0, 0 ; `os` seulement, optionnel |
+| `WEIGHTS_0` | `skinWeight` | `vec4` ubyte normalisé | Toujours 1, 0, 0, 0 (os rigides) ; `os` seulement, optionnel |
 
 ### Fibres et tendons (`_FIBER`, `_TENDON`, optionnels)
 
@@ -92,6 +97,94 @@ l'app est censée appliquer ses propres matériaux.
 contient `format`, `model`, `version` et `license` (`{id, url}`), la licence du modèle. Le glb ne
 contient ni image, ni texture, ni coordonnées de texture.
 
+### Squelette articulé et mouvements (`rig`, optionnel)
+
+Depuis la 1.7.0, le maillage `os` est un maillage à peau glTF (*skin*) : le squelette peut prendre des positions et
+jouer des mouvements (flexion du coude, abduction des épaules, marche…). Les attributs, nœuds et animations sont
+ajoutés sans changer les autres : les positions de `os` restent celles du repos (position anatomique), et l'app
+doit rendre normalement un modèle qui n'a pas de `rig`. Mais un lecteur glTF générique **voit la peau** : avec
+three.js (`GLTFLoader`), `os` devient un `SkinnedMesh` lié aux nœuds d'articulation, ce qui demande :
+
+- de copier la scène avec `SkeletonUtils.clone` (`three/examples/jsm/utils/SkeletonUtils.js`) et non
+  `Object3D.clone(true)` : ce dernier garde le squelette de l'original, et un mouvement joué sur la copie
+  déplace les os jusqu'à près d'un mètre de leur place (ou ne les déplace pas du tout) ;
+- pendant un mouvement, `frustumCulled = false` sur le maillage `os` (ou recalculer sa sphère englobante avec
+  `computeBoundingSphere()`, qui tient compte de la pose) : la sphère d'origine est celle du repos, et un os levé
+  peut en sortir et disparaître au bord de l'écran ;
+- de ne pas supposer que `os` est un `Mesh` simple (le lancer de rayon de three.js sur un `SkinnedMesh` teste la
+  pose courante).
+
+- **Os rigides.** Chaque structure du maillage `os` est liée tout entière à une seule articulation (`JOINTS_0` =
+  l'articulation, `WEIGHTS_0` = 1) : un os ne se déforme jamais. Les dents suivent le crâne ou la mandibule, la
+  patella a sa propre articulation (elle suit le genou sur la trochlée puis les condyles, voir plus bas), le carpe, le
+  métacarpe et les doigts suivent le poignet, le tarse, le métatarse et les orteils la cheville, les côtes, le
+  sternum, les cartilages costaux et les vertèbres thoraciques forment un seul bloc (`thorax`). Le rattachement se
+  fait par le nom anglais de la structure (`pipeline/anatomo_models/rig.py`, `MIDLINE_RULES` et `SIDE_RULES`) ; le
+  build échoue si un os n'est rattaché à rien.
+- **Articulations.** Un nœud glTF par articulation, nommé en ASCII sans point (`coude-d`, `hanche-g`,
+  `lombaire-3`, `tete` ; les noms de nœuds avec `.` ou `:` ne sont pas adressables par les animations de
+  three.js). Ils suivent les nœuds des systèmes et forment un seul arbre, de racine `squelette`, ajoutée à la scène :
+
+  `squelette` → `bassin` → `lombaire-5` … `lombaire-1` → `thorax` → `cervicale-7` … `cervicale-2` → `atlas` →
+  `tete` → `mandibule` ; `thorax` → `ceinture-d|g` → `epaule` → `coude` (ulna) → `avant-bras` (radius) →
+  `poignet` ; `bassin` → `hanche` (fémur) → `genou` (tibia, fibula) → `cheville`, et `hanche` → `patella`.
+
+  Un modèle n'a que les articulations de ses os (`upper_limb` : `squelette`, `ceinture-d`, `epaule-d`, `coude-d`,
+  `avant-bras-d`, `poignet-d`) ; une articulation absente confie ses enfants à son parent.
+- **Centres de rotation**, calculés sur la géométrie publiée et les repères osseux : centre de la sphère ajustée à la
+  tête humérale et à la tête fémorale (moindres carrés, sur les sommets à moins de 2,4 et 3 cm des repères
+  `humerus.tete` et `femur.tete`) ; centre de la sphère du capitulum (coude) ; tête radiale (pronation, autour de
+  l'axe tête radiale → tête ulnaire) ; centre du lunatum (poignet) ; milieu des épicondyles fémoraux (genou) ;
+  milieu des pointes des malléoles (cheville) ; milieu des processus condylaires (mandibule) ; extrémité sternale
+  de la clavicule (ceinture) ; centre du plateau inférieur du corps vertébral, 3 mm sous lui (vertèbres) ; dent de
+  l'axis (atlas, rotation de la tête). Les axes viennent des os quand l'anatomie en donne un (épicondyles huméraux,
+  processus styloïdes, malléoles, tête radiale → tête ulnaire), inclinés au plus de 12° (20° pour la pronation) par
+  rapport à l'axe du repère du même mouvement, sinon des axes du repère. Ce sont des approximations géométriques,
+  à faire valider comme les repères.
+- **Repos.** La rotation de repos de chaque articulation est l'identité et sa translation est l'écart entre son
+  centre et celui de son parent : les axes locaux sont ceux du repère du modèle en position anatomique. Les
+  `inverseBindMatrices` sont des translations de `-centre`. Le nœud `os` porte `skin: 0` (`skeleton` = la racine).
+- **Mouvements** : une animation glTF par mouvement, nommée par sa clé ; rotations des articulations
+  (quaternions, `LINEAR`, 24 images par seconde) et, pour la marche, translation verticale de la racine (le point
+  le plus bas des deux pieds, sur tous leurs sommets, reste au niveau du sol de la position de repos ; cette
+  piste a 4 fois plus d'images que les autres, parce que le point le plus bas glisse le long de la plante).
+- **Patella** : quand le genou fléchit, elle tourne autour de l'axe du genou d'un angle choisi pour garder la
+  longueur du ligament patellaire (repères `tibia.tuberosite` → `patella.apex`), puis glisse vers l'axe jusqu'à
+  retrouver l'écart de repos avec le fémur (au moins 1,5 mm) ; table de 0 à 140° par pas de 1,25°, interpolée.
+  Elle a donc une rotation et une translation par mouvement qui plie le genou. Le build échoue si elle s'écarte du
+  fémur de plus d'1 mm au-delà de l'écart de repos, et rapporte l'écart maximal sur les images des animations.
+- **Flexion de l'épaule** : l'angle est celui du bras dans le plan sagittal (150° : environ 120° à la
+  gléno-humérale et 30° d'élévation de la ceinture) ; l'épaule annule la rotation de la ceinture à chaque image,
+  pour que le bras monte droit devant lui pendant que la ceinture soulève l'épaule. Chaque mouvement **part de la position anatomique et y revient** (première et dernière
+  images exactement au repos). Les angles sont des courbes simples écrites dans `rig.py` (montée, tenue, retour ;
+  cycle de marche approché des courbes de manuel de la hanche, du genou et de la cheville), pas des mesures ni des
+  animations reprises d'ailleurs.
+
+| Clé | Nom | Articulations | `full_body` | `upper_limb` |
+|---|---|---|---|---|
+| `flexion-coude` | Flexion du coude (droit, 135°) | `coude-d` | ✓ | ✓ |
+| `pronation-supination` | Pronation et supination (coude fléchi à 90°, de la supination du repos à la pronation complète, 160°, et retour) | `coude-d`, `avant-bras-d` | ✓ | ✓ |
+| `flexion-extension-poignet` | Flexion et extension du poignet (70° / 60°) | `poignet-d` | ✓ | ✓ |
+| `abduction-epaule` | Abduction des épaules (gléno-humérale 120° + ceinture 30°) ; « de l'épaule » dans `upper_limb` | `epaule-*`, `ceinture-*` | ✓ | ✓ (droite) |
+| `flexion-epaule` | Flexion de l'épaule (150° : gléno-humérale ~120° + ceinture 30°) | `epaule-d`, `ceinture-d` | ✓ | ✓ |
+| `flexion-hanche` | Flexion de la hanche, genou fléchi (110°) | `hanche-d`, `genou-d`, `patella-d` | ✓ | |
+| `abduction-hanche` | Abduction de la hanche (40°) | `hanche-d` | ✓ | |
+| `flexion-genou` | Flexion du genou (125°) | `genou-d`, `patella-d` | ✓ | |
+| `flexion-cheville` | Flexion dorsale (20°) et plantaire (45°) | `cheville-d` | ✓ | |
+| `flexion-extension-tronc` | Flexion (50°) et extension (25°) du tronc, réparties sur L1–L5 | `lombaire-*` | ✓ | |
+| `inclinaison-tronc` | Inclinaison latérale du tronc (30° de chaque côté) | `lombaire-*` | ✓ | |
+| `flexion-extension-tete` | Flexion et extension de la tête (C2–C7 et atlanto-occipitale) | `cervicale-*`, `tete` | ✓ | |
+| `rotation-tete` | Rotation de la tête (atlanto-axoïdienne 40° + C2–C7 30°) | `atlas`, `cervicale-*` | ✓ | |
+| `ouverture-bouche` | Ouverture de la bouche (25°) | `mandibule` | ✓ | |
+| `marche` | Marche simplifiée, sur place (3 cycles) | hanches, genoux, patellas, chevilles, épaules, coudes, `squelette` | ✓ | |
+
+Les mouvements d'un côté sont joués à droite. Les autres systèmes (muscles, vaisseaux, nerfs…) n'ont pas de peau :
+ils ne suivent pas les os, et l'app les cache pendant un mouvement.
+
+Coût : 8 octets par sommet du maillage `os` (`JOINTS_0` + `WEIGHTS_0`), plus les animations : +0,31 Mo pour
+`upper_limb` (6 articulations, 5 mouvements), +0,67 Mo pour `full_body` (35 articulations, 15 mouvements), soit
+1 à 1,5 % du fichier.
+
 ## Licence de chaque modèle
 
 | Modèle | `license.id` | Sources |
@@ -130,9 +223,25 @@ sans les supposer identiques d'un modèle à l'autre.
       "bbox": [[-0.21, 0.98, -0.05], [-0.15, 1.31, 0.02]],
       "source": "bodyparts3d-3.0"   // ou "bodyparts3d-4.0", "open3dmodel" (nerfs des membres)
     }
-  ]
+  ],
+  "rig": {                        // optionnel (1.7.0) : squelette articulé, voir plus haut
+    "node": "os",
+    "joints": [                   // dans l'ordre des joints de la peau glTF, parents d'abord ; racine en premier
+      {"name": "squelette", "fr": "Squelette", "parent": null, "pivot": [0, 0, 0], "structures": []},
+      {"name": "coude-d", "fr": "Coude droit", "parent": "epaule-d", "pivot": [-0.232, 1.046, 0.07],
+       "structures": ["FMA23467"]}   // os liés à l'articulation : chaque os du maillage `os` une fois
+    ],
+    "movements": [                // dans l'ordre des animations du glb, `key` = nom de l'animation
+      {"key": "flexion-coude", "fr": "Flexion du coude", "side": "right", "plane": "sagittal", "duration": 4.0,
+       "joints": ["coude-d"]}
+    ]
+  }
 }
 ```
+
+Dans `rig.movements`, `side` vaut `right` pour un mouvement d'un seul côté (joué à droite), `null` sinon ; `plane`
+(`sagittal`, `frontal`, `transverse`) est le plan où le mouvement se voit le mieux ; `duration` est en secondes ;
+`joints` liste les nœuds animés.
 
 `source` vaut `bodyparts3d-4.0` ou `bodyparts3d-3.0` (os et muscles du membre supérieur, muscles absents de la
 4.0 dans `full_body` : face, mastication, paroi abdominale, grand dorsal…), `open3dmodel` (nerfs des membres) ou
@@ -225,6 +334,14 @@ Jusqu'à la v1.0.0, seul `upper_limb` avait des repères (12, sur l'humérus) et
 - **Masquer beaucoup de structures** : `geometry.setDrawRange` ou des groupes construits à partir
   des plages `triangles`, puisque les structures sont contiguës.
 - **Cadrage sur une structure** : `bbox`.
+- **Squelette articulé** : avec `GLTFLoader`, le nœud `os` devient un `SkinnedMesh` et `gltf.animations` contient
+  les mouvements (`AnimationClip` nommés par leur clé). Copier la scène avec `SkeletonUtils.clone` (un
+  `Object3D.clone` garde le squelette de l'original). Jouer un mouvement : `AnimationMixer` sur la scène, puis
+  `mixer.setTime(t)` à chaque image tant que `t < duration` ; à la fin, `mixer.stopAllAction()` remet la position de
+  repos. Coût par image : une trentaine de pistes interpolées et autant de matrices d'os, le skinning sur GPU des
+  64 000 sommets du maillage `os` (`full_body`). La sélection reste un lancer de rayon sur les positions au repos :
+  ramener le rayon dans le repère de repos de l'os touché (inverse de `bone.matrixWorld × inverseBindMatrix`, rigide)
+  suffit, puisque chaque os suit une seule articulation (`rig.joints[].structures`).
 - **Fibres** : si `geometry.attributes._fiber` existe, three.js le lit normalisé (`vec3` dans [-1, 1]) et
   `_tendon` comme un `float` dans [0, 1] ; les positions sont en mètres dans l'espace objet, ce qui fixe la
   fréquence d'un bruit procédural.
