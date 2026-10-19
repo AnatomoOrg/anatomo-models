@@ -154,11 +154,18 @@ les liste).
   4 articulations au plus : un sommet collé à un os le suit seul, un sommet entre deux os (autour d'une
   articulation) se partage entre eux et s'étire avec le mouvement. Une structure ne suit que les articulations
   proches, dans l'arbre, de la sienne (celle dont les os sont les plus proches de la majorité de ses sommets ; deux
-  liens au plus, un lien entre deux articulations du rachis comptant pour 0,2), ou les plus proches d'au moins 10 %
-  de ses sommets : un muscle de l'avant-bras ne suit pas l'os coxal qu'il frôle, mais les muscles de l'abdomen
-  suivent le thorax et le bassin. La peau, d'une seule structure pour tout le corps, prend les poids du muscle le
-  plus proche de chacun de ses sommets. Les poids sont ensuite lissés sur le maillage (3 passes de moyenne entre
-  voisins) pour éviter une couture là où l'os le plus proche change. C'est un *skinning* linéaire sans muscles
+  liens au plus, un lien entre deux articulations du rachis comptant pour 0,2, jamais une articulation du côté
+  opposé), ou les plus proches d'au moins 10 % de ses sommets : un muscle de l'avant-bras ne suit pas l'os coxal
+  qu'il frôle, mais les muscles de l'abdomen suivent le thorax et le bassin. Un sommet suit toujours un os à moins
+  de 1,5 cm de lui : l'extrémité de la veine céphalique suit le poignet, comme les veines de la main qu'elle
+  rejoint (au-delà, un tel os s'efface vite, continûment). La peau, d'une seule structure pour tout le corps, prend les poids du muscle le plus proche de chacun de
+  ses sommets. Sans le thorax (`upper_limb`), les structures dont au moins un quart des sommets sont à plus de 4 cm
+  de tout os (muscles du tronc : grand dorsal, grand pectoral, trapèze…) suivent aussi la racine, immobile, comme
+  si les os manquants étaient à 4 cm : leur partie sur le tronc reste en place et elles s'étirent jusqu'au bras.
+  Les poids varient continûment avec les distances aux os, sans lissage, si bien que deux structures qui se touchent
+  (un vaisseau et sa branche) ont les mêmes poids à leur jonction et ne s'écartent pas. Ceux de la peau, pris au
+  muscle le plus proche, sont lissés sur son maillage (3 passes de moyenne entre voisins) pour éviter une couture
+  là où ce muscle change. C'est un *skinning* linéaire sans muscles
   qui se contractent : un pli d'articulation s'aplatit, un muscle qui croise l'articulation s'étire ou se
   comprime, sans glisser sur l'os.
 - **Mouvements** : une animation glTF par mouvement, nommée par sa clé ; rotations des articulations
@@ -200,7 +207,8 @@ suivaient pas les os ; depuis la 1.8.0, ils les suivent (`rig.skinned`).
 
 Coût : 8 octets par sommet (`JOINTS_0` + `WEIGHTS_0`) de chaque maillage à peau, plus les animations : +0,31 Mo pour
 `upper_limb` (6 articulations, 5 mouvements), +0,67 Mo pour `full_body` (35 articulations, 15 mouvements), soit
-1 à 1,5 % du fichier en 1.7.0 (os seuls) ; les parties molles ajoutent 8 octets par sommet (voir le rapport du build).
+1 à 1,5 % du fichier en 1.7.0 (os seuls). Les parties molles ajoutent 8 octets par sommet en 1.8.0 : +8,2 Mo pour
+`full_body` (59,5 → 67,7 Mo, environ un million de sommets), +2,6 Mo pour `upper_limb` (20,4 → 23,0 Mo).
 
 ## Licence de chaque modèle
 

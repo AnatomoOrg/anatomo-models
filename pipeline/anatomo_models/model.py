@@ -128,7 +128,7 @@ def build(structures, glb_path, manifest_path, model, version, sources, license=
                 if p["name"] != "os":
                     ranges = [tuple(e["vertices"]) for e in entries if e["system"] == p["name"]]
                     skin["soft"][p["name"]] = soft.weights(p["positions"], p["indices"], ranges,
-                                                           envelope=p["name"] == "peau")
+                                                           envelope=p["name"] == "peau", muscles=p["name"] == "muscles")
     write_glb(glb_path, primitives, copyright=attribution,
               extras={"format": FORMAT, "model": model, "version": version, "license": license}, rig=skin)
     manifest = {
