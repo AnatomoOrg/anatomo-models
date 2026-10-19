@@ -100,13 +100,23 @@ contient ni image, ni texture, ni coordonnées de texture.
 ### Squelette articulé et mouvements (`rig`, optionnel)
 
 Depuis la 1.7.0, le maillage `os` est un maillage à peau glTF (*skin*) : le squelette peut prendre des positions et
-jouer des mouvements (flexion du coude, abduction des épaules, marche…). Tout est optionnel et ajouté sans changer le
-format : un lecteur qui ignore les peaux et les animations lit le fichier comme avant (positions au repos =
-position anatomique), et l'app doit rendre normalement un modèle qui n'en a pas.
+jouer des mouvements (flexion du coude, abduction des épaules, marche…). Les attributs, nœuds et animations sont
+ajoutés sans changer les autres : les positions de `os` restent celles du repos (position anatomique), et l'app
+doit rendre normalement un modèle qui n'a pas de `rig`. Mais un lecteur glTF générique **voit la peau** : avec
+three.js (`GLTFLoader`), `os` devient un `SkinnedMesh` lié aux nœuds d'articulation, ce qui demande :
+
+- de copier la scène avec `SkeletonUtils.clone` (`three/examples/jsm/utils/SkeletonUtils.js`) et non
+  `Object3D.clone(true)` : ce dernier garde le squelette de l'original, et un mouvement joué sur la copie
+  déplace les os jusqu'à près d'un mètre de leur place (ou ne les déplace pas du tout) ;
+- pendant un mouvement, `frustumCulled = false` sur le maillage `os` (ou recalculer sa sphère englobante avec
+  `computeBoundingSphere()`, qui tient compte de la pose) : la sphère d'origine est celle du repos, et un os levé
+  peut en sortir et disparaître au bord de l'écran ;
+- de ne pas supposer que `os` est un `Mesh` simple (le lancer de rayon de three.js sur un `SkinnedMesh` teste la
+  pose courante).
 
 - **Os rigides.** Chaque structure du maillage `os` est liée tout entière à une seule articulation (`JOINTS_0` =
   l'articulation, `WEIGHTS_0` = 1) : un os ne se déforme jamais. Les dents suivent le crâne ou la mandibule, la
-  patella a sa propre articulation (elle glisse sur le fémur à 60 % de la flexion du genou), le carpe, le
+  patella a sa propre articulation (elle suit le genou sur la trochlée puis les condyles, voir plus bas), le carpe, le
   métacarpe et les doigts suivent le poignet, le tarse, le métatarse et les orteils la cheville, les côtes, le
   sternum, les cartilages costaux et les vertèbres thoraciques forment un seul bloc (`thorax`). Le rattachement se
   fait par le nom anglais de la structure (`pipeline/anatomo_models/rig.py`, `MIDLINE_RULES` et `SIDE_RULES`) ; le
@@ -135,8 +145,17 @@ position anatomique), et l'app doit rendre normalement un modèle qui n'en a pas
   centre et celui de son parent : les axes locaux sont ceux du repère du modèle en position anatomique. Les
   `inverseBindMatrices` sont des translations de `-centre`. Le nœud `os` porte `skin: 0` (`skeleton` = la racine).
 - **Mouvements** : une animation glTF par mouvement, nommée par sa clé ; rotations des articulations
-  (quaternions, `LINEAR`, 24 images par seconde) et, pour la marche, translation verticale de la racine (le pied le
-  plus bas reste au sol). Chaque mouvement **part de la position anatomique et y revient** (première et dernière
+  (quaternions, `LINEAR`, 24 images par seconde) et, pour la marche, translation verticale de la racine (le point
+  le plus bas des deux pieds, sur tous leurs sommets, reste au niveau du sol de la position de repos ; cette
+  piste a 4 fois plus d'images que les autres, parce que le point le plus bas glisse le long de la plante).
+- **Patella** : quand le genou fléchit, elle tourne autour de l'axe du genou d'un angle choisi pour garder la
+  longueur du ligament patellaire (repères `tibia.tuberosite` → `patella.apex`), puis glisse vers l'axe jusqu'à
+  retrouver l'écart de repos avec le fémur (au moins 1,5 mm) ; table de 0 à 140° par pas de 1,25°, interpolée.
+  Elle a donc une rotation et une translation par mouvement qui plie le genou. Le build échoue si elle s'écarte du
+  fémur de plus d'1 mm au-delà de l'écart de repos, et rapporte l'écart maximal sur les images des animations.
+- **Flexion de l'épaule** : l'angle est celui du bras dans le plan sagittal (150° : environ 120° à la
+  gléno-humérale et 30° d'élévation de la ceinture) ; l'épaule annule la rotation de la ceinture à chaque image,
+  pour que le bras monte droit devant lui pendant que la ceinture soulève l'épaule. Chaque mouvement **part de la position anatomique et y revient** (première et dernière
   images exactement au repos). Les angles sont des courbes simples écrites dans `rig.py` (montée, tenue, retour ;
   cycle de marche approché des courbes de manuel de la hanche, du genou et de la cheville), pas des mesures ni des
   animations reprises d'ailleurs.
@@ -144,10 +163,10 @@ position anatomique), et l'app doit rendre normalement un modèle qui n'en a pas
 | Clé | Nom | Articulations | `full_body` | `upper_limb` |
 |---|---|---|---|---|
 | `flexion-coude` | Flexion du coude (droit, 135°) | `coude-d` | ✓ | ✓ |
-| `pronation-supination` | Pronation et supination (coude fléchi à 90°, 85°) | `coude-d`, `avant-bras-d` | ✓ | ✓ |
+| `pronation-supination` | Pronation et supination (coude fléchi à 90°, de la supination du repos à la pronation complète, 160°, et retour) | `coude-d`, `avant-bras-d` | ✓ | ✓ |
 | `flexion-extension-poignet` | Flexion et extension du poignet (70° / 60°) | `poignet-d` | ✓ | ✓ |
 | `abduction-epaule` | Abduction des épaules (gléno-humérale 120° + ceinture 30°) ; « de l'épaule » dans `upper_limb` | `epaule-*`, `ceinture-*` | ✓ | ✓ (droite) |
-| `flexion-epaule` | Flexion de l'épaule (150°) | `epaule-d` | ✓ | ✓ |
+| `flexion-epaule` | Flexion de l'épaule (150° : gléno-humérale ~120° + ceinture 30°) | `epaule-d`, `ceinture-d` | ✓ | ✓ |
 | `flexion-hanche` | Flexion de la hanche, genou fléchi (110°) | `hanche-d`, `genou-d`, `patella-d` | ✓ | |
 | `abduction-hanche` | Abduction de la hanche (40°) | `hanche-d` | ✓ | |
 | `flexion-genou` | Flexion du genou (125°) | `genou-d`, `patella-d` | ✓ | |
@@ -162,8 +181,8 @@ position anatomique), et l'app doit rendre normalement un modèle qui n'en a pas
 Les mouvements d'un côté sont joués à droite. Les autres systèmes (muscles, vaisseaux, nerfs…) n'ont pas de peau :
 ils ne suivent pas les os, et l'app les cache pendant un mouvement.
 
-Coût : 8 octets par sommet du maillage `os` (`JOINTS_0` + `WEIGHTS_0`), plus les animations : +0,30 Mo pour
-`upper_limb` (6 articulations, 5 mouvements), +0,65 Mo pour `full_body` (35 articulations, 15 mouvements), soit
+Coût : 8 octets par sommet du maillage `os` (`JOINTS_0` + `WEIGHTS_0`), plus les animations : +0,31 Mo pour
+`upper_limb` (6 articulations, 5 mouvements), +0,67 Mo pour `full_body` (35 articulations, 15 mouvements), soit
 1 à 1,5 % du fichier.
 
 ## Licence de chaque modèle

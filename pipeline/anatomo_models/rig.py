@@ -138,7 +138,12 @@ def body_endplate(v):
 
 
 class RigError(Exception):
-    pass
+    """The rig cannot be built as the data stand (a fitted sphere of the wrong size, a patella off the femur...):
+    the build stops."""
+
+
+class RigMissing(RigError):
+    """A bone or landmark the rig needs is not in the model: the model is published without a rig."""
 
 
 class Bones:
@@ -156,13 +161,13 @@ class Bones:
 
     def get(self, en):
         if en not in self.v:
-            raise RigError(f"missing bone: {en}")
+            raise RigMissing(f"missing bone: {en}")
         return self.v[en]
 
     def mark(self, id, side=None):
         key = (id, side)
         if key not in self.marks:
-            raise RigError(f"missing landmark: {id} ({side})")
+            raise RigMissing(f"missing landmark: {id} ({side})")
         return self.marks[key]
 
 
@@ -337,6 +342,10 @@ class Movement:
     fps: int = FPS
     grounded: bool = False  # the skeleton goes down so that the lowest foot stays on the ground
     one_side: str | None = None  # name when the model has only the right side of a two-sided movement
+    # A degree of freedom given in the frame rather than relative to the parent joint: the joint undoes its parents'
+    # rotation and turns by the curve about the axis, so that the limb stays in its plane (shoulder flexion: the
+    # arm rises in the sagittal plane while the girdle lifts the shoulder; the curve is the arm's whole angle).
+    sagittal: tuple | None = None
 
 
 def _gait(phase):
@@ -366,7 +375,6 @@ def _walk(cycles=3, period=1.2, ramp=0.6):
     for side in ("right", "left"):
         curves[("hanche", side, "flexion")] = (lambda sd: lambda t: at(t, sd, "hip"))(side)
         curves[("genou", side, "flexion")] = (lambda sd: lambda t: at(t, sd, "knee"))(side)
-        curves[("patella", side, "flexion")] = (lambda sd: lambda t: 0.6 * at(t, sd, "knee"))(side)
         curves[("cheville", side, "flexion-dorsale")] = (lambda sd: lambda t: at(t, sd, "ankle"))(side)
         curves[("epaule", side, "flexion")] = (lambda sd: lambda t: at(t, sd, "arm"))(side)
         curves[("coude", side, "flexion")] = (lambda sd: lambda t: at(t, sd, "elbow"))(side)
@@ -391,7 +399,8 @@ def movements():
                  {("coude", r, "flexion"): scaled(UP_HOLD_DOWN, 135)}, side=r, requires=("coude-d",)),
         Movement("pronation-supination", "Pronation et supination", "transverse", 6.0,
                  {("coude", r, "flexion"): keys((0, 0), (0.15, 90), (0.85, 90), (1, 0)),
-                  ("avant-bras", r, "pronation"): keys((0, 0), (0.15, 0), (0.4, 85), (0.6, 85), (0.85, 0), (1, 0))},
+                  # From the supinated anatomical position to full pronation (palm down, elbow flexed), and back.
+                  ("avant-bras", r, "pronation"): keys((0, 0), (0.15, 0), (0.4, 160), (0.6, 160), (0.85, 0), (1, 0))},
                  side=r, requires=("avant-bras-d",)),
         Movement("flexion-extension-poignet", "Flexion et extension du poignet", "sagittal", 5.0,
                  {("poignet", r, "flexion"): keys((0, 0), (0.3, 70), (0.4, 70), (0.7, -60), (0.8, -60), (1, 0))},
@@ -401,15 +410,17 @@ def movements():
                   **{("ceinture", s, "elevation"): scaled(UP_HOLD_DOWN, 30) for s in ("right", "left")}},
                  requires=("epaule-d",), one_side="Abduction de l'épaule"),
         Movement("flexion-epaule", "Flexion de l'épaule", "sagittal", 5.0,
-                 {("epaule", r, "flexion"): scaled(UP_HOLD_DOWN, 150)}, side=r, requires=("epaule-d",)),
+                 # 150 degrees in all: about 120 at the glenohumeral joint and 30 from the girdle, as in abduction.
+                 {("epaule", r, "flexion"): scaled(UP_HOLD_DOWN, 150),
+                  ("ceinture", r, "elevation"): scaled(UP_HOLD_DOWN, 30)}, side=r, requires=("epaule-d",),
+                 sagittal=("epaule", r, "flexion")),
         Movement("flexion-hanche", "Flexion de la hanche (genou fléchi)", "sagittal", 4.5,
-                 {("hanche", r, "flexion"): scaled(UP_HOLD_DOWN, 110), ("genou", r, "flexion"): scaled(UP_HOLD_DOWN, 110),
-                  ("patella", r, "flexion"): scaled(UP_HOLD_DOWN, 66)}, side=r, requires=("hanche-d", "genou-d")),
+                 {("hanche", r, "flexion"): scaled(UP_HOLD_DOWN, 110), ("genou", r, "flexion"): scaled(UP_HOLD_DOWN, 110)},
+                 side=r, requires=("hanche-d", "genou-d")),
         Movement("abduction-hanche", "Abduction de la hanche", "frontal", 4.0,
                  {("hanche", r, "abduction"): scaled(UP_HOLD_DOWN, 40)}, side=r, requires=("hanche-d",)),
         Movement("flexion-genou", "Flexion du genou", "sagittal", 4.0,
-                 {("genou", r, "flexion"): scaled(UP_HOLD_DOWN, 125), ("patella", r, "flexion"): scaled(UP_HOLD_DOWN, 75)},
-                 side=r, requires=("genou-d",)),
+                 {("genou", r, "flexion"): scaled(UP_HOLD_DOWN, 125)}, side=r, requires=("genou-d",)),
         Movement("flexion-cheville", "Flexion dorsale et plantaire", "sagittal", 5.0,
                  {("cheville", r, "flexion-dorsale"): keys((0, 0), (0.25, 20), (0.35, 20), (0.7, -45), (0.8, -45), (1, 0))},
                  side=r, requires=("cheville-d",)),
@@ -459,13 +470,15 @@ def qrot(q, v):
 
 def build_rig(structures, positions, marks):
     """Rig of the `os` mesh. structures: the manifest entries of the os system (en, vertices); positions: the os
-    POSITION array; marks: the landmarks (id, side, position). Returns None when the model has no bone the rig
-    knows (no joint besides the root), else a dict:
+    POSITION array; marks: the landmarks (id, side, position). Returns None when the model has
+    no bone the rig knows (no joint besides the root), or lacks a bone or a landmark a joint of its bones needs
+    (the model is then published without a rig, see build.py), else a dict:
       joints: [{name, fr, parent (index or None), pivot (3,), axes {dof: (3,)}, structures [ids]}], root first,
               parents before children;
       vertex_joint: (N,) joint index per vertex of the os mesh;
       animations: [{key, fr, plane, side, duration, joints [names],
-                    channels [{joint (index), path ("rotation" or "translation"), times (K,), values (K,4|3)}]}].
+                    channels [{joint (index), path ("rotation" or "translation"), times (K,), values (K,4|3)}]}];
+      measures: {name: value}, for the build report (patella gap, lowest foot vertex during the walk...).
     """
     b = Bones(structures, positions, marks)
     bound = {}
@@ -480,13 +493,17 @@ def build_rig(structures, positions, marks):
         for side in (("right", "left") if base in SIDED else (None,)):
             names.append((joint_name(base, side), base, side))
     found = {}
-    for name, base, side in names:
-        p = pivots(b, name)
-        if p is not None:
-            found[name] = (base, side, p)
-    missing = set(bound) - set(found)
-    if missing:
-        raise RigError(f"bones bound to joints without a pivot: {sorted(missing)}")
+    try:
+        for name, base, side in names:
+            p = pivots(b, name)
+            if p is not None:
+                found[name] = (base, side, p)
+        missing = set(bound) - set(found)
+        if missing:
+            raise RigMissing(f"bones bound to joints without a pivot: {sorted(missing)}")
+    except RigMissing as e:
+        print(f"rig: none ({e})")
+        return None
 
     def parent_of(name, base, side):
         p = JOINTS[base][1]
@@ -523,59 +540,177 @@ def build_rig(structures, positions, marks):
         for s in items:
             v0, k = s["vertices"]
             vertex_joint[v0:v0 + k] = index[n]
-    rig = {"joints": joints, "vertex_joint": vertex_joint, "animations": []}
-    feet = _feet(b, index)
+    rig = {"joints": joints, "vertex_joint": vertex_joint, "animations": [], "measures": {}}
+    patellas = {}
+    for side in ("right", "left"):
+        knee, pat = joint_name("genou", side), joint_name("patella", side)
+        if knee in index and pat in index:
+            patellas[side] = PatellaTrack(b, side, joints[index[pat]]["pivot"], joints[index[pat]]["axes"]["flexion"])
+    # Ground: every vertex of the feet (subsampled), not only a few landmarks.
+    feet = [(index[n], np.asarray(positions, float)[vertex_joint == index[n]])
+            for n in (joint_name("cheville", "right"), joint_name("cheville", "left")) if n in index]
     for mv in movements():
         if not all(r in index for r in mv.requires):
             continue
         n_keys = int(round(mv.duration * mv.fps)) + 1
         times = np.linspace(0, mv.duration, n_keys)
         t = times / mv.duration
-        per_joint = {}
+        per_joint, angles = {}, {}
         for (base, side, dof), curve in mv.curves.items():
             n = joint_name(base, side)
-            if n not in index:
+            if n not in index or (base, side, dof) == mv.sagittal:
                 continue
-            axis = joints[index[n]]["axes"][dof]
-            q = quat(axis, curve(t))
+            angles[(n, dof)] = curve(t)
+            q = quat(joints[index[n]]["axes"][dof], angles[(n, dof)])
+            per_joint[n] = qmul(per_joint[n], q) if n in per_joint else q
+        if mv.sagittal and joint_name(mv.sagittal[0], mv.sagittal[1]) in index:
+            # In the plane of the frame's axis whatever its parents do: the joint first undoes the rotation of its
+            # parents at each key (the girdle lifts the shoulder without swinging the arm sideways), then turns
+            # about the axis as seen in the world.
+            base, side, dof = mv.sagittal
+            n = joint_name(base, side)
+            world = np.tile([0.0, 0, 0, 1], (n_keys, 1))
+            chain, p = [], joints[index[n]]["parent"]
+            while p is not None:
+                chain.append(joints[p]["name"])
+                p = joints[p]["parent"]
+            for a in reversed(chain):
+                if a in per_joint:
+                    world = qmul(world, per_joint[a])
+            q = qmul(world * [-1, -1, -1, 1], quat(joints[index[n]]["axes"][dof], mv.curves[mv.sagittal](t)))
             per_joint[n] = qmul(per_joint[n], q) if n in per_joint else q
         channels = []
+        for side, track in patellas.items():
+            knee = angles.get((joint_name("genou", side), "flexion"))
+            if knee is None:
+                continue
+            n = joint_name("patella", side)
+            per_joint[n], push = track(knee)
+            rest = joints[index[n]]["pivot"] - joints[joints[index[n]]["parent"]]["pivot"]
+            push[0] = push[-1] = 0
+            channels.append({"joint": index[n], "path": "translation", "times": times, "values": rest + push})
+            worst = max(track.gap(q, sh) for q, sh in zip(per_joint[n], push))
+            key = f"patella {side}: widest gap to the femur at the animation keys (mm)"
+            rig["measures"][key] = max(rig["measures"].get(key, 0.0), round(worst * 1000, 2))
         for n, q in per_joint.items():
             q[0] = q[-1] = (0, 0, 0, 1)  # exactly the anatomical position at both ends
             q /= np.linalg.norm(q, axis=1, keepdims=True)
             channels.append({"joint": index[n], "path": "rotation", "times": times, "values": q})
+        channels.sort(key=lambda c: (c["joint"], c["path"] != "rotation"))
         anim = {"key": mv.key, "fr": mv.fr, "plane": mv.plane, "side": mv.side, "duration": mv.duration,
-                "joints": list(per_joint), "channels": channels}
+                "joints": list(per_joint),
+                "channels": channels}
         if mv.one_side and not any(n.endswith("-g") for n in per_joint):
             anim.update(fr=mv.one_side, side="right")
         if mv.grounded and feet:
-            # The lowest foot stays on the ground: the whole skeleton goes down as the legs bend.
-            drop = np.zeros(n_keys)
-            rest = min(p[1] for _, p in feet)
-            for k, tk in enumerate(times):
+            # The lowest point of the feet stays on the ground: the whole skeleton goes down as the legs bend.
+            # The root's keys are 4 times denser than the joints': the feet turn between the joints' keys, and the
+            # lowest point moves along the sole.
+            rest = min(p[:, 1].min() for _, p in feet)
+            fine = np.linspace(0, mv.duration, 4 * (n_keys - 1) + 1)
+
+            def lowest(tk):
                 world = pose(rig, animation_pose(rig, anim, tk))
-                drop[k] = rest - min(posed_points(rig, world, j, [p])[0][1] for j, p in feet)
+                return min(posed_points(rig, world, j, p)[:, 1].min() for j, p in feet)
+            drop = rest - np.array([lowest(tk) for tk in fine])
             drop[0] = drop[-1] = 0
             root = joints[0]["pivot"]
-            channels.append({"joint": 0, "path": "translation", "times": times,
-                             "values": np.c_[np.full(n_keys, root[0]), root[1] + drop, np.full(n_keys, root[2])]})
+            channels.insert(0, {"joint": 0, "path": "translation", "times": fine,
+                                "values": np.c_[np.full(len(fine), root[0]), root[1] + drop, np.full(len(fine), root[2])]})
             anim["joints"].append(joints[0]["name"])
+            off = rest - np.array([lowest(tk) for tk in np.linspace(0, mv.duration, 16 * (n_keys - 1) + 1)])
+            rig["measures"][f"{mv.key}: deepest foot point below the ground (mm)"] = float(round(max(off.max(), 0) * 1000, 2))
+            rig["measures"][f"{mv.key}: highest lowest foot point above the ground (mm)"] = float(round(max(-off.min(), 0) * 1000, 2))
         rig["animations"].append(anim)
+    for side, track in patellas.items():
+        rig["measures"][f"patella {side}: gap to the femur at rest (mm)"] = round(track.rest_gap * 1000, 2)
+        rig["measures"][f"patella {side}: widest gap to the femur, 0-140 deg (mm)"] = round(track.worst * 1000, 2)
     return rig
 
 
-def _feet(b, index):
-    """Ground contact points of the feet: (ankle joint index, point) for the heel and the head of the first
-    metatarsal of each side the model has."""
-    out = []
-    for side in ("right", "left"):
-        j = index.get(joint_name("cheville", side))
-        if j is None:
-            continue
-        for mark in ("calcaneus.tuberosite", "metatarsien-1.tete"):
-            if (mark, side) in b.marks:
-                out.append((j, b.marks[(mark, side)]))
-    return out
+class PatellaTrack:
+    """Where the patella goes as the knee bends: it turns about the knee axis, held at the length of the patellar
+    ligament from the tibial tuberosity, and slides towards the axis until it touches the trochlea or the condyles
+    again (the femur is not a cylinder around the knee axis). Tabulated once per side over 0-140 degrees of
+    flexion; __call__ gives, for knee angles, the patella's rotations (quaternions, in the femur's frame) and its
+    shifts (m). `worst`: the widest gap left between the patella and the femur over the table (m)."""
+
+    STEP = 1.25
+
+    def __init__(self, b, side, pivot, axis):
+        from scipy.spatial import cKDTree
+        self.pivot, self.axis = np.asarray(pivot, float), np.asarray(axis, float)
+        pat, fem = b.get(f"{side} patella"), b.get(f"{side} femur")
+        self.thetas = thetas = np.arange(0, 140 + self.STEP, self.STEP)
+        tree = cKDTree(fem)
+
+        def gap(v):
+            return float(tree.query(v)[0].min())
+        self._gap, self._pat = gap, pat
+
+        # The articular face: the patella's vertices closest to the femur at rest.
+        d0, _ = tree.query(pat)
+        face = pat[d0 < d0.min() + 0.012]
+        centre = face.mean(0)
+        target = max(gap(pat), 0.0015)  # the gap at rest (cartilage), at least 1.5 mm
+        tub, apex = b.marks.get(("tibia.tuberosite", side)), b.marks.get(("patella.apex", side))
+        length = np.linalg.norm(apex - tub) if tub is not None and apex is not None else None
+
+        def placed(alpha):
+            q = quat(self.axis, [alpha])[0]
+            v = self.pivot + qrot(q, face - self.pivot)
+            u = self.pivot - (self.pivot + qrot(q, (centre - self.pivot)[None])[0])
+            u /= np.linalg.norm(u)
+            if gap(v) <= target:
+                return q, np.zeros(3)
+            lo, hi = 0.0, None
+            for k in range(1, 61):  # towards the axis by 0.5 mm steps, up to the first contact
+                if gap(v + k * 0.0005 * u) <= target:
+                    lo, hi = (k - 1) * 0.0005, k * 0.0005
+                    break
+            if hi is None:
+                return q, 0.03 * u
+            for _ in range(5):
+                mid = (lo + hi) / 2
+                lo, hi = (mid, hi) if gap(v + mid * u) > target else (lo, mid)
+            return q, hi * u
+
+        alphas, prev = [0.0], 0.0
+        for theta in thetas[1:]:
+            if length is None:
+                best = 0.7 * theta
+            else:
+                tub_t = self.pivot + qrot(quat(self.axis, [theta])[0], (tub - self.pivot)[None])[0]
+
+                def err(alpha):
+                    q, sh = placed(alpha)
+                    a = self.pivot + qrot(q, (apex - self.pivot)[None])[0] + sh
+                    return abs(np.linalg.norm(a - tub_t) - length)
+                best = min(np.arange(prev, min(theta, prev + 3 * self.STEP) + 1e-9, 0.25), key=err)
+            alphas.append(best)
+            prev = best
+        # The search is coarse (0.25 degree, and a noisy objective): smooth the angles so that the patella does
+        # not jerk, then slide it back onto the femur at the smoothed angles.
+        a = np.array(alphas)
+        a = np.convolve(np.r_[[a[0]] * 2, a, [a[-1]] * 2], np.ones(5) / 5, "valid")
+        a[0] = 0.0
+        self.alphas = np.maximum.accumulate(a)
+        self.shifts = np.array([placed(x)[1] for x in self.alphas])
+        self.rest_gap = target
+        self.worst = max(gap(self.pivot + qrot(quat(self.axis, [a])[0], pat - self.pivot) + sh)
+                         for a, sh in zip(self.alphas, self.shifts))
+        if self.worst > target + 0.001:
+            raise RigError(f"{side} patella leaves the femur by {self.worst * 1000:.1f} mm")
+
+    def gap(self, q, shift):
+        """The gap between the femur and the patella turned by q and shifted by `shift` (m)."""
+        return self._gap(self.pivot + qrot(np.asarray(q, float), self._pat - self.pivot) + shift)
+
+    def __call__(self, knee):
+        knee = np.clip(np.asarray(knee, float), 0, self.thetas[-1])
+        alpha = np.interp(knee, self.thetas, self.alphas)
+        shift = np.c_[[np.interp(knee, self.thetas, self.shifts[:, i]) for i in range(3)]].T
+        return quat(self.axis, alpha), shift
 
 
 def pose(rig, local):
