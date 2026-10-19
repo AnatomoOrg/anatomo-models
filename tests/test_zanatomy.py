@@ -1,4 +1,4 @@
-"""Z-Anatomy sinuses and nerves of the whole body: whitelist, names, ids, tubes, trimming, .blend reader, licence."""
+"""Z-Anatomy sinuses and trunk nerves of the whole body: whitelist, names, ids, tubes, trimming, .blend reader, licence."""
 import json
 import os
 import re
@@ -23,7 +23,14 @@ def test_whitelist_has_no_object_of_uncertain_provenance():
     # The facial and vestibulocochlear nerves run where the non-commercial inner-ear model has them.
     for name in ("Facial nerve (VII).r", "Chorda tympani.l", "Vestibulocochlear nerve (VIII).r", "Cochlear nerve",
                  "Vestibular nerve.l", "Cochlea.r", "Kidney.l", "Renal pyramids", "White matter of spinal cord",
-                 "Nucleus of abducens nerve.l", "Optic tract.r"):
+                 "Nucleus of abducens nerve.l", "Optic tract.r",
+                 # Cranial nerves: Z-Anatomy may have adapted them from "Cranial Nerves and Foramina" (University
+                 # of Dundee), whose Sketchfab page shows no Creative Commons licence: none is read.
+                 "Olfactory nerve (I).r", "Oculomotor nerve (III).l", "Trigeminal nerve (V).l", "Maxillary nerve.r",
+                 "Anterior division of mandibular nerve.r", "Lingual nerve.r", "Inferior alveolar nerve.l",
+                 "Buccal nerve.l", "Mental nerve.r", "Nerve to mylohyoid muscle.l", "Abducens nerve (VI).r",
+                 "Glossopharyngeal nerve (IX).l", "Vagus nerve (X).r", "Accessory nerve (XI).r",
+                 "Hypoglossal nerve (XII).l", "Meningeal branch of maxillary nerve.r"):
         assert za.EXCLUDED.search(name), name
         with pytest.raises(ValueError):
             za.read(None, name)
@@ -32,7 +39,7 @@ def test_whitelist_has_no_object_of_uncertain_provenance():
 
 def test_concepts_names_and_sides():
     concepts = za.concepts()  # asserts that objects sharing an id agree on its names
-    assert len(za.OBJECTS) == 63 and len(concepts) == 61
+    assert len(za.OBJECTS) == 31 and len(concepts) == 29
     for fid, (en, fr, sys_, objs) in concepts.items():
         assert re.fullmatch(r"FMA\d+(-L)?", fid), fid
         assert sys_ in ("veines", "nerfs") and en == en.lower() and fr.strip() and not fr[0].islower(), fid
@@ -49,8 +56,8 @@ def test_concepts_names_and_sides():
             assert fid.removesuffix("-L") in concepts and re.search(r"\bleft\b", en), fid
     for fid, name in [("FMA50767", "superior sagittal sinus"), ("FMA50769", "straight sinus"),
                       ("FMA50764", "right transverse sinus"), ("FMA51294", "left sigmoid sinus"),
-                      ("FMA51402", "right cavernous sinus"), ("FMA6219", "right vagus nerve"),
-                      ("FMA50901", "right hypoglossal nerve"), ("FMA50886", "right abducens nerve")]:
+                      ("FMA51402", "right cavernous sinus"), ("FMA51248", "right superior ophthalmic vein"),
+                      ("FMA75467", "set of right intercostal nerves"), ("FMA6260", "left sympathetic trunk")]:
         assert concepts[fid][0] == name
     # A right concept and its left twin have the same English name but the side.
     by_en = {en: fid for fid, (en, *_) in concepts.items()}
@@ -70,7 +77,7 @@ def test_ids_new_or_merged():
     assert not (ids - za.MERGE) & existing
     assert {f for t in za.TRIM.values() for f in t} | set(za.BRIDGE_TO.values()) <= existing
     assert set(za.TRIM) | set(za.BRIDGE_TO) | set(za.BRIDGE) | set(za.BRIDGE.values()) <= set(za.OBJECTS)
-    assert za.PARENT_FIX <= set(za.OBJECTS) and set(za.CLIP_BELOW) <= set(za.OBJECTS)
+    assert za.PARENT_FIX <= set(za.OBJECTS)
 
 
 def test_bones_are_whole_body_structures():
@@ -149,5 +156,60 @@ def test_blend_objects_and_geometry():
         assert 0.3 < np.linalg.norm(np.diff(p, axis=0), axis=1).sum() < 0.4 and 0 < r.max() < 0.005
         kind, v, f = za.read(b, "Cavernous sinus.r")
         assert kind == "mesh" and v[:, 0].mean() < 0  # subject's right at negative x
+    finally:
+        b.close()
+
+
+def _blend_file(tmp_path, body):
+    p = tmp_path / "forged.blend"
+    p.write_bytes(body)
+    return str(p)
+
+
+def _block(code, data, old=0, sdna=0, count=1):
+    import struct
+    return struct.pack("<4siQii", code, len(data), old, sdna, count) + data
+
+
+def test_blend_rejects_forged_files(tmp_path):
+    """A malformed file raises ValueError (no assert, no read beyond a block)."""
+    import struct
+    head = b"BLENDER-v305"
+    endb = _block(b"ENDB", b"")
+
+    def sdna(names=(b"a",), n_names=None, n_structs=0, structs=b""):
+        body = b"SDNANAME" + struct.pack("<i", len(names) if n_names is None else n_names) + b"".join(
+            x + b"\0" for x in names)
+        body += b"\0" * (-len(body) % 4)
+        body += b"TYPE" + struct.pack("<i", 1) + b"int\0"
+        body += b"\0" * (-len(body) % 4)
+        body += b"TLEN" + struct.pack("<h", 4) + b"\0\0"
+        return body + b"STRC" + struct.pack("<i", n_structs) + structs
+
+    cases = [
+        b"",  # empty
+        b"BLENDER_V305",  # big-endian / 32-bit header
+        head,  # no ENDB
+        head + _block(b"TEST", b"xx")[:-1],  # block beyond the file
+        head + endb,  # no DNA1
+        head + _block(b"DNA1", sdna(n_names=10 ** 6)) + endb,  # more names than bytes
+        head + _block(b"DNA1", b"SDNANAME" + struct.pack("<i", 1) + b"abc") + endb,  # unterminated name
+        head + _block(b"DNA1", sdna(n_structs=1, structs=struct.pack("<hh", 5, 0))) + endb,  # type index
+        head + _block(b"DNA1", sdna(n_structs=1, structs=struct.pack("<hhhh", 0, 1, 0, 7))) + endb,  # name index
+        head + _block(b"DNA1", sdna(n_structs=1, structs=struct.pack("<hh", 0, 50))) + endb,  # fields beyond
+        head + _block(b"DNA1", sdna(n_structs=1, structs=struct.pack("<hh", 0, 0)))
+        + _block(b"TEST", b"", sdna=3) + endb,  # block with an SDNA index out of range
+    ]
+    for body in cases:
+        with pytest.raises(ValueError):
+            Blend(_blend_file(tmp_path, body))
+    ok = head + _block(b"DNA1", sdna(n_structs=1, structs=struct.pack("<hh", 0, 0))) + endb
+    b = Blend(_blend_file(tmp_path, ok))
+    try:
+        assert b.objects() == {}
+        with pytest.raises(ValueError):
+            b.block(0x1234)
+        with pytest.raises(ValueError):
+            b.check(12, "int")
     finally:
         b.close()

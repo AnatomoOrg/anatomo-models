@@ -191,7 +191,7 @@ Non repris : le fragment de moelle spinale (`Spinal_cord_curve`, cône médullai
 
 ## Sinus et nerfs de Z-Anatomy (`full_body`)
 
-Les 63 objets de Z-Anatomy en liste blanche sont rattachés à 61 identifiants par la table `OBJECTS` de
+Les 31 objets de Z-Anatomy en liste blanche sont rattachés à 29 identifiants par la table `OBJECTS` de
 `pipeline/anatomo_models/zanatomy.py` : FMA ID et nom anglais vérifiés dans la FMA de l'EBI (OLS, octobre 2026),
 nom français dans la terminologie anatomique internationale en français, sans côté. Comme ceux de l'Open3DModel,
 ces noms sont dans la table du pipeline et pas dans `data/fr_names.json`. Z-Anatomy a les deux côtés : chaque côté
@@ -204,15 +204,10 @@ les a relus.
 | --- | --- | --- | --- |
 | `Straight sinus` | FMA50769 straight sinus | Sinus droit | « droit » au sens de rectiligne, pas de côté |
 | `Basilar venous plexus` | FMA50783 basilar venous plexus | Plexus basilaire | — |
-| `Anterior/Posterior division of mandibular nerve` | FMA53062/FMA53064 anterior/posterior trunk of right mandibular nerve | Tronc antérieur/postérieur du nerf mandibulaire | Z-Anatomy dessine le nerf mandibulaire par ses deux troncs, sans tronc commun |
-| `Nerve to mylohyoid muscle` | FMA53248 right mylohyoid nerve | Nerf mylohyoïdien | — |
-| `Accessory nerve (XI)` | FMA50897 right spinal accessory nerve | Nerf accessoire | La FMA nomme « spinal accessory nerve » le nerf accessoire |
-| `Trigeminal nerve (V)` | FMA50884 right trigeminal nerve | Nerf trijumeau | L'objet est la racine et le ganglion ; ses branches sont des structures à part |
-| `Vagus nerve (X)` | FMA6219 right vagus nerve | Nerf vague | Partie cervicale seulement (jusqu'aux premières côtes) |
 | `Intercostal nerves` | FMA75467 / FMA75467-L set of right/left intercostal nerves | Nerfs intercostaux | Ensemble sans côté dans la FMA : identifiant `-L` à gauche ; 11 nerfs par côté, sans nerf subcostal |
 | `Sympathetic nerves` | FMA75599 / FMA75599-L set of communicating branches of right/left sympathetic trunk with spinal nerves | Rameaux communicants | Nommés « Sympathetic nerves » dans la source ; ce sont les rameaux qui relient le tronc aux nerfs intercostaux (blancs et gris confondus) |
 | `Sympathetic trunk` + `Ganglia of sympathetic trunk` | FMA6259 right sympathetic trunk (avec l'Open3DModel) | Tronc sympathique | Parties cervicale et thoracique, ajoutées aux parties lombaire et sacrale de l'Open3DModel |
 
-Sinus de la dure-mère (sagittaux, transverses, sigmoïdes, pétreux, caverneux, intercaverneux, occipital), veines
-ophtalmiques et nerfs olfactif, oculomoteur, abducens, glossopharyngien, hypoglosse, maxillaire, buccal, lingual,
-alvéolaire inférieur et mentonnier : concept FMA du même nom, sans doute particulier.
+Sinus de la dure-mère (sagittaux, transverses, sigmoïdes, pétreux, caverneux, intercaverneux, occipital) et veines
+ophtalmiques : concept FMA du même nom, sans doute particulier. Les nerfs crâniens de Z-Anatomy ne sont pas repris
+(provenance non établie, voir `CREDITS.md`).

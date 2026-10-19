@@ -58,10 +58,10 @@ Seule la **géométrie** est utilisée : les exports OBJ n'ont ni matériaux ni 
 exports Blender et glb (dérivées de « Thoracic walls », Claudia Krebs et al., UBC, CC BY-NC-SA 4.0)
 ne sont ni téléchargées ni incluses.
 
-## Z-Anatomy (sinus de la dure-mère, nerfs crâniens, nerfs du tronc ; `full_body`)
+## Z-Anatomy (sinus de la dure-mère, nerfs du tronc ; `full_body`)
 
 Les **sinus veineux de la dure-mère**, les **veines ophtalmiques**, la partie haute des **veines jugulaires
-internes**, des **nerfs crâniens** et des **nerfs du tronc** de `full_body` viennent de **Z-Anatomy**
+internes** et des **nerfs du tronc** de `full_body` viennent de **Z-Anatomy**
 (Gauthier Kervyn, <https://www.z-anatomy.com/>), dépôt <https://github.com/Z-Anatomy/Models-of-human-anatomy>,
 licence [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Le README du dépôt dit :
 
@@ -75,23 +75,28 @@ Z-Anatomy dérive lui-même de BodyParts3D (« It includes models derived from '
 
 | Fichier | Version | Utilisé pour |
 |---|---|---|
-| `Z-Anatomy.zip` (<https://github.com/Z-Anatomy/Models-of-human-anatomy>, commit `767f14e0a4dfc55aa7c3455685b62339a4faec99`), SHA-256 dans `pipeline/zanatomy.sha256` | `Startup.blend` daté du 02/05/2023 (Blender 3.5) | 63 objets en liste blanche (61 structures, dont 4 complètent une structure existante) et 56 os pour le recalage |
+| `Z-Anatomy.zip` (<https://github.com/Z-Anatomy/Models-of-human-anatomy>, commit `767f14e0a4dfc55aa7c3455685b62339a4faec99`), SHA-256 dans `pipeline/zanatomy.sha256` | `Startup.blend` daté du 02/05/2023 (Blender 3.5) | 31 objets en liste blanche (29 structures, dont 4 complètent une structure existante) et 56 os pour le recalage |
 
 **Provenance objet par objet.** Le README de Z-Anatomy cite des modèles tiers « used as reference/included and
 adapted », dont deux **non commerciaux** : « Anatomy of the Inner Ear - by University of Dundee School of Medicine -
 CC-BY-NC-SA 4.0 » et « Kidney - by Lissie Cowley - CC-BY-NC 4.0 » ; « Brainder » et « White matter » (University of
-Washington) n'ont pas de licence indiquée ; « Cranial Nerves and Foramina - by University of Dundee, CAHID » est
-CC BY 4.0 selon le README (CC BY-SA 4.0 sur <https://anatomytool.org/node/60433>), compatible dans les deux cas.
+Washington) n'ont pas de licence indiquée. « Cranial Nerves and Foramina - by University of Dundee, CAHID » est
+CC BY 4.0 selon le README seulement : sa page (Sophia Lappe, 2021,
+<https://sketchfab.com/3d-models/cranial-nerves-and-foramina-a9358ee7a6dd4ea18a3622114405a4c7>) n'affiche aucune
+licence Creative Commons, n'est pas téléchargeable et porte l'étiquette « NoAI ». Les nerfs crâniens de Z-Anatomy
+en sont peut-être adaptés : leur provenance n'est pas établie, **aucun nerf crânien de Z-Anatomy n'est lu**.
 Z-Anatomy ne marque pas la provenance de chaque objet. Le pipeline ne lit donc qu'une **liste blanche explicite**
 (`OBJECTS` dans `pipeline/anatomo_models/zanatomy.py`) :
 
 - des **courbes** Blender (splines de Bézier à biseau rond, tracées dans Blender, pas l'import d'un maillage tiers) :
-  sinus, veines ophtalmiques, veine jugulaire interne, nerfs crâniens et nerfs du tronc. Aucune ne se trouve dans
-  l'oreille ni dans le rein ;
+  sinus, veines ophtalmiques, veine jugulaire interne, nerfs intercostaux, troncs sympathiques et rameaux
+  communicants. Aucune ne se trouve dans l'oreille, le rein ou l'encéphale, ni n'est un nerf crânien ;
 - trois **maillages** absents de BodyParts3D et de tous les modèles tiers cités, donc propres à Z-Anatomy : sinus
   caverneux, plexus basilaire, ganglions des troncs sympathiques.
 
-Sont exclus, en plus de tout ce qui touche l'oreille, le rein et l'encéphale (surfaces, noyaux, tractus) : le
+Sont exclus, en plus de tout ce qui touche l'oreille, le rein et l'encéphale (surfaces, noyaux, tractus) : **tous
+les nerfs crâniens** et leurs branches (olfactif, optique, oculomoteur, trochléaire, trijumeau et ses branches,
+abducens, glossopharyngien, vague, accessoire, hypoglosse ; voir ci-dessus), et en particulier le
 **nerf facial**, la **corde du tympan** et le **nerf vestibulocochléaire** (nerfs cochléaire et vestibulaire), que
 le modèle non commercial de l'oreille interne de Dundee contient (<https://anatomytool.org/node/60505>). Le build
 refuse de lire un objet hors liste ou dont le nom touche ces régions. Seule la géométrie est lue (le `.blend` n'a
@@ -129,7 +134,7 @@ Faites par le projet Anatomo avec le code de `pipeline/` :
   recalage sur les os BodyParts3D 4.0 (similitude, puis recalage rigide os par os et champ de déplacement), correction
   de la position du sinus droit et du sinus occipital (décalage de parent de 44,5 mm dans la source), raccord de la
   veine jugulaire interne au sinus sigmoïde (7 mm) et du tronc sympathique thoracique au tronc lombaire de
-  l'Open3DModel, nerf vague limité à sa partie cervicale, parties qui doublent une structure BodyParts3D retirées,
+  l'Open3DModel, parties qui doublent une structure BodyParts3D retirées,
   rattachement à un identifiant FMA et à un nom français ;
 - attributs de sommet `_FIBER` (direction des fibres) et `_TENDON` (zones tendineuses) ajoutés au
   maillage `muscles`, calculés depuis les repères d'origine et d'insertion ou l'axe du muscle.

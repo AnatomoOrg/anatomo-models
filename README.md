@@ -3,8 +3,8 @@
 Modèles 3D anatomiques de l'app Anatomo, et le pipeline qui les produit à partir de
 [BodyParts3D](https://dbarchive.biosciencedbc.jp/en/bodyparts3d/) et, pour les nerfs des membres,
 de l'Open3DModel (AnatomyTOOL : [membre supérieur](https://anatomytool.org/node/63906),
-[membre inférieur](https://anatomytool.org/node/63936)) et, pour les sinus de la dure-mère, des nerfs crâniens et
-des nerfs du tronc du corps entier, de [Z-Anatomy](https://github.com/Z-Anatomy/Models-of-human-anatomy).
+[membre inférieur](https://anatomytool.org/node/63936)) et, pour les sinus de la dure-mère et des nerfs du tronc
+du corps entier, de [Z-Anatomy](https://github.com/Z-Anatomy/Models-of-human-anatomy).
 
 Les modèles sont des œuvres dérivées publiées en libre accès sous **CC BY-SA 4.0** : ils combinent
 BodyParts3D (CC BY-SA 2.1 Japon, adaptable sous une version ultérieure), les nerfs de l'Open3DModel
@@ -20,7 +20,7 @@ manifestes, leurs repères anatomiques, une somme SHA-256 et les textes de licen
 | Modèle | Contenu | Maillages (draw calls) |
 |---|---|---|
 | `upper_limb` | Membre supérieur droit et ceinture scapulaire (MVP) : os, muscles, artères, veines, nerfs | 5 |
-| `full_body` | Corps entier, tous systèmes (contexte), dont les nerfs des quatre membres, les sinus de la dure-mère, des nerfs crâniens et des nerfs du tronc | 7 |
+| `full_body` | Corps entier, tous systèmes (contexte), dont les nerfs des quatre membres, les sinus de la dure-mère et des nerfs du tronc | 7 |
 
 Chaque modèle a **un maillage par système** au lieu d'un maillage par structure (le prototype
 en avait 2 234 pour le corps entier), et garde la sélection structure par structure grâce à un
@@ -121,19 +121,17 @@ Aucune copie binaire n'est gardée dans git.
   cutané du nerf obturateur…) sont repoussés à 2,5 mm sous sa surface (`pipeline/anatomo_models/skin.py`).
   Le côté gauche prend les concepts FMA gauches ; voir [`docs/FORMAT.md`](docs/FORMAT.md#le-manifeste) pour
   les concepts sans côté.
-- **Sinus de la dure-mère, nerfs crâniens et nerfs du tronc dans `full_body`** : Z-Anatomy (`Startup.blend` du
+- **Sinus de la dure-mère et nerfs du tronc dans `full_body`** : Z-Anatomy (`Startup.blend` du
   commit `767f14e`, SHA-256 épinglé, lu sans Blender par `pipeline/anatomo_models/blend.py` ; seule une liste blanche
-  d'objets est lue, voir [`CREDITS.md`](CREDITS.md#z-anatomy-sinus-de-la-dure-mère-nerfs-crâniens-nerfs-du-tronc--full_body)) :
+  d'objets est lue, voir [`CREDITS.md`](CREDITS.md#z-anatomy-sinus-de-la-dure-mère-nerfs-du-tronc--full_body)) :
   sinus sagittaux supérieur et inférieur, droit, occipital, transverses, sigmoïdes, pétreux supérieurs et inférieurs,
   caverneux, intercaverneux, plexus basilaire, veines ophtalmiques, partie haute des veines jugulaires internes
-  (du foramen jugulaire aux 4 cm de BodyParts3D) ; nerfs olfactif, oculomoteur, trijumeau (avec les nerfs maxillaire,
-  troncs du nerf mandibulaire, nerfs buccal, lingual, alvéolaire inférieur, mylohyoïdien et mentonnier), abducens,
-  glossopharyngien, vague (partie cervicale), accessoire et hypoglosse ; nerfs intercostaux, troncs sympathiques
+  (du foramen jugulaire aux 4 cm de BodyParts3D) ; nerfs intercostaux, troncs sympathiques
   cervical et thoracique (raccordés au tronc lombo-sacral de l'Open3DModel) et rameaux communicants. Z-Anatomy dessine
   vaisseaux et nerfs en courbes : elles sont balayées en tubes ronds (6 à 12 côtés, une section tous les 1,5 mm), sans
   décimation. Z-Anatomy est un BodyParts3D remis à l'échelle (environ 1,02) et déplacé : recalage sur 56 os 4.0 du
   corps entier (crâne, maxillaires, vertèbres C1–L2, sternum, côtes) par une similitude puis os par os, comme
-  l'Open3DModel (erreur résiduelle 2,1 mm RMS ; os du crâne 1,3 à 2,9 mm). `full_body` : 57 structures de plus,
+  l'Open3DModel (erreur résiduelle 2,1 mm RMS ; os du crâne 1,3 à 2,9 mm). `full_body` : 25 structures de plus,
   et 4 structures existantes complétées.
 - Fusion des sommets dupliqués avant décimation (sinon la décimation ouvre des trous), puis
   décimation : 20 % pour le membre supérieur (minimum 3 000 triangles par structure, environ
@@ -166,8 +164,9 @@ Aucune copie binaire n'est gardée dans git.
   BodyParts3D est plus près de la scapula) ; quelques nerfs digitaux entrent dans les phalanges (position des
   doigts et des orteils de la source). Les nerfs cutanés repoussés sous la peau gardent leur forme mais pas
   leur trajet exact. Il manque encore, dans le tronc, les nerfs phréniques, le plexus cervical, les nerfs
-  splanchniques, le nerf subcostal, les parties thoracique et abdominale du nerf vague (absents de Z-Anatomy ou
-  inutilisables, voir ci-dessous) et la moelle spinale. Noms et points incertains du membre inférieur :
+  splanchniques, le nerf subcostal, le nerf vague (absents de Z-Anatomy ou inutilisables, voir ci-dessous) et la
+  moelle spinale. Les **nerfs crâniens** restent ceux de BodyParts3D (orbitaires surtout) : ceux de Z-Anatomy ne
+  sont pas repris, faute de licence établie (voir ci-dessous). Noms et points incertains du membre inférieur :
   [`docs/NOMS.md`](docs/NOMS.md#nerfs-du-membre-inférieur-open3dmodel-full_body).
 - Le grand dorsal et le chef profond du court fléchisseur du pouce (dont le fichier 4.0 est du mauvais
   côté) viennent de la 3.0 seule, recalés par le champ de déplacement, comme les trois parties du
@@ -198,15 +197,15 @@ Aucune copie binaire n'est gardée dans git.
 - **Structures de Z-Anatomy** (`full_body`) : un autre dessin recalé sur nos os (2,1 mm RMS ; côtes 9 à 12 :
   3,3 à 4,2 mm). Les vaisseaux et nerfs sont des tubes ronds de rayon dessiné par Z-Anatomy : le sinus sagittal
   supérieur fait 4 mm de large au plus (section triangulaire en réalité). BodyParts3D n'ayant pas de sillons
-  veineux ni de canaux nerveux, les sinus sigmoïdes et pétreux sont aux deux tiers dans l'os temporal, et les nerfs
-  alvéolaires inférieurs et mentonniers dans la mandibule (où passe le canal mandibulaire). Le sinus droit et le
+  veineux, les sinus sigmoïdes et pétreux sont aux deux tiers dans l'os temporal. Le sinus droit et le
   sinus occipital sont mal placés dans Z-Anatomy (4,5 cm trop en avant) : le pipeline corrige ce décalage
   (`PARENT_FIX`). Ajouts synthétiques, droits : 7 mm entre sinus sigmoïde et veine jugulaire interne (bulbe
   jugulaire) et environ 2,5 cm entre les troncs sympathiques thoraciques de Z-Anatomy et lombaires de l'Open3DModel.
-  Non repris : nerfs II, IV et ophtalmique (BodyParts3D les a déjà en entier), nerf facial, corde du tympan et nerf
-  vestibulocochléaire (provenance non établie), rameau méningé du nerf maxillaire (dessiné hors du crâne), nerf vague
-  sous la racine du cou (le gauche s'arrête en T2 et le droit porte les rameaux gastriques antérieurs, du côté
-  gauche). Le sinus caverneux reste à 3 mm du sinus intercaverneux antérieur, comme dans Z-Anatomy.
+  Non repris : **tous les nerfs crâniens** de Z-Anatomy (I à XII et leurs branches). Z-Anatomy les a peut-être
+  adaptés de « Cranial Nerves and Foramina » (University of Dundee, CAHID), que son README dit CC BY 4.0 mais dont
+  la page Sketchfab n'affiche aucune licence Creative Commons, n'est pas téléchargeable et porte l'étiquette
+  « NoAI » : provenance non établie. Le nerf vague de Z-Anatomy était de toute façon faux sous la racine du cou.
+  Le sinus caverneux reste à 3 mm du sinus intercaverneux antérieur, comme dans Z-Anatomy.
 - Les **noms français** (`data/fr_names.json`) couvrent toutes les structures. Ils
   ont été traduits puis relus par des agents, sans relecture humaine, et ne portent pas le côté
   (sauf quand il fait partie du nom). Conventions et points incertains :

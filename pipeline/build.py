@@ -1,5 +1,5 @@
 """Build the published models from BodyParts3D (Open3DModel for the nerves of the limbs, Z-Anatomy for the dural
-sinuses, cranial nerves and nerves of the trunk of the whole body).
+sinuses, orbital veins and nerves of the trunk of the whole body).
 
 Usage: python3 pipeline/build.py SRC_DIR OUT_DIR [--only upper_limb|full_body] [--open3d DIR] [--zanatomy DIR]
 SRC_DIR holds the BodyParts3D files fetched by pipeline/fetch_bp3d.sh; the Open3DModel OBJs (upper and
@@ -31,8 +31,8 @@ SOURCES = [
 # Structure counts of the last reviewed build: fewer means a selection rule or a source file regressed.
 # upper_limb: 161 BodyParts3D structures + 48 Open3DModel nerves.
 # full_body: 1734 BodyParts3D structures + 220 Open3DModel nerves (48 upper-limb and 62 lower-limb concepts, x 2 sides)
-# + 57 Z-Anatomy structures (61 concepts, 4 of which complete a structure already there).
-MIN_STRUCTURES = {"upper_limb": 209, "full_body": 2011}
+# + 25 Z-Anatomy structures (29 concepts, 4 of which complete a structure already there).
+MIN_STRUCTURES = {"upper_limb": 209, "full_body": 1979}
 # Both models include Open3DModel nerves (CC BY-SA 4.0): they are published under CC BY-SA 4.0.
 MODELS = {
     "upper_limb": {"sources": SOURCES + [open3d.SOURCE], "license": open3d.LICENSE, "attribution": open3d.ATTRIBUTION},

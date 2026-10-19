@@ -1,4 +1,4 @@
-"""Dural venous sinuses, cranial nerves and nerves of the trunk from Z-Anatomy, geometry only, for the whole body.
+"""Dural venous sinuses and nerves of the trunk from Z-Anatomy, geometry only, for the whole body.
 
 Source: Z-Anatomy, "Models-of-human-anatomy" (Gauthier Kervyn, https://github.com/Z-Anatomy/Models-of-human-anatomy),
 CC BY-SA 4.0: `Z-Anatomy.zip` at commit COMMIT, pinned by SHA-256 (pipeline/zanatomy.sha256) and fetched by
@@ -9,15 +9,17 @@ Licence and provenance. Z-Anatomy is CC BY-SA 4.0 as a whole, derived from BodyP
 README lists third-party models "used as reference/included and adapted", two of them non-commercial:
 "Anatomy of the Inner Ear" (University of Dundee, CC BY-NC-SA 4.0; it holds the facial and vestibulocochlear nerves)
 and "Kidney" (Lissie Cowley, CC BY-NC 4.0); "Brainder" and "White matter" (brain surfaces and tracts) have no
-stated licence; "Cranial Nerves and Foramina" (University of Dundee, CAHID) is CC BY 4.0 per the README, CC BY-SA 4.0
-on AnatomyTOOL (node/60433). Z-Anatomy does not mark provenance per object, so only the objects of `OBJECTS` are
-read, an explicit whitelist:
+stated licence; "Cranial Nerves and Foramina" (University of Dundee, CAHID) is called CC BY 4.0 by the README only:
+its Sketchfab page (sketchfab.com/3d-models/cranial-nerves-and-foramina-a9358ee7a6dd4ea18a3622114405a4c7) shows no
+Creative Commons licence, no download and a "NoAI" tag. Z-Anatomy's cranial nerves may be adapted from it: none is
+read. Z-Anatomy does not mark provenance per object, so only the objects of `OBJECTS` are read, an explicit
+whitelist:
 
 - curves (Blender Bezier splines with a round bevel, drawn in Blender: not an import of a third-party mesh) of the
-  dural sinuses, orbital veins, internal jugular vein and of cranial and trunk nerves; none of them lies in the ear
-  or the kidney. The facial nerve, the chorda tympani and the vestibulocochlear nerve (cochlear and vestibular
-  nerves), which run through the temporal bone where the non-commercial inner-ear model has them, are left out
-  (`EXCLUDED`), as is everything of the ear, the kidney and the brain (surfaces, nuclei, tracts);
+  dural sinuses, orbital veins, internal jugular vein and of the intercostal nerves, sympathetic trunks and their
+  communicating branches; none of them lies in the ear, the kidney or the brain, nor is a cranial nerve. All cranial
+  nerves (and their branches), everything of the ear, the kidney and the brain (surfaces, nuclei, tracts) are left
+  out (`EXCLUDED`);
 - three meshes found in none of the listed third-party models nor in BodyParts3D, hence Z-Anatomy's own work:
   the cavernous sinuses, the basilar venous plexus and the ganglia of the sympathetic trunks.
 
@@ -28,16 +30,15 @@ vertebrae and ribs (`BONES`), then a rigid ICP per bone, the structures followin
 bones. Splines are moved point by point, then swept into round tubes (their radius times the bevel depth): a tube
 stays round whatever the field does.
 
-Structures already in the model. BodyParts3D has the optic, trochlear and ophthalmic nerves whole: Z-Anatomy's are
-not read. It has the branches of the oculomotor nerve and 4 cm of the internal jugular vein: the spline points of
-Z-Anatomy's oculomotor nerve and jugular vein whose tube touches them are dropped (`TRIM`), each kept piece reaching
-one point further, into the structure it continues. An object whose concept is already in the model (`MERGE`: internal
+Structures already in the model. BodyParts3D has 4 cm of the internal jugular vein: the spline points of Z-Anatomy's
+jugular vein whose tube touches it are dropped (`TRIM`), each kept piece reaching one point further, into the
+structure it continues. An object whose concept is already in the model (`MERGE`: internal
 jugular veins, sympathetic trunks whose lumbo-sacral part comes from Open3DModel) is added to that structure's mesh
 (source "<source>+z-anatomy").
 
 Fixes of the source, each documented at its table: two sinuses placed 4.5 cm off by a stale parent offset
-(`PARENT_FIX`), 7 mm left between sigmoid sinus and jugular vein (`BRIDGE`), thoracic sympathetic trunk stopping short
-of Open3DModel's lumbar one (`BRIDGE_TO`), vagus nerves kept in the neck only (`CLIP_BELOW`).
+(`PARENT_FIX`), 7 mm left between sigmoid sinus and jugular vein (`BRIDGE`) and thoracic sympathetic trunk stopping short
+of Open3DModel's lumbar one (`BRIDGE_TO`).
 """
 import re
 
@@ -59,7 +60,7 @@ CREDIT = '"Z-Anatomy - The libre 3D atlas of anatomy - CC-BY-SA 4.0" (Gauthier K
 # Attribution of the whole-body model: BodyParts3D, Open3DModel (nerves of the limbs) and Z-Anatomy.
 ATTRIBUTION = open3d_full_body.ATTRIBUTION.replace(
     " Modified by the Anatomo project;",
-    f" Dural venous sinuses, cranial nerves and nerves of the trunk: {CREDIT}"
+    f" Dural venous sinuses and nerves of the trunk: {CREDIT}"
     " (https://creativecommons.org/licenses/by-sa/4.0/), derived from BodyParts3D. Modified by the Anatomo project;", 1)
 assert ATTRIBUTION != open3d_full_body.ATTRIBUTION
 
@@ -122,48 +123,6 @@ OBJECTS = {
     # Internal jugular vein, from the jugular foramen: continues the 4 cm of BodyParts3D (MERGE)
     "Internal jugular vein.r": ("FMA4754", "right internal jugular vein", "Veine jugulaire interne", _V),
     "Internal jugular vein.l": ("FMA4762", "left internal jugular vein", "Veine jugulaire interne", _V),
-    # Cranial nerves. Not VII and VIII (see EXCLUDED); not II, IV and the ophthalmic nerve either: BodyParts3D has them
-    # whole (optic nerve to the chiasm, trochlear nerve to the midbrain, ophthalmic nerve from the orbit to the
-    # trigeminal ganglion), and Z-Anatomy's run up to 6 mm beside them, with branches drawn 16 mm away from
-    # BodyParts3D's: they would be doubled. Nor the meningeal branch of the maxillary nerve, which Z-Anatomy draws
-    # partly outside the skull (one of its three splines lies entirely outside the parietal bone).
-    "Olfactory nerve (I).r": ("FMA52592", "right olfactory nerve", "Nerf olfactif", _N),
-    "Olfactory nerve (I).l": ("FMA52593", "left olfactory nerve", "Nerf olfactif", _N),
-    "Oculomotor nerve (III).r": ("FMA50879", "right oculomotor nerve", "Nerf oculomoteur", _N),
-    "Oculomotor nerve (III).l": ("FMA50880", "left oculomotor nerve", "Nerf oculomoteur", _N),
-    "Trigeminal nerve (V).r": ("FMA50884", "right trigeminal nerve", "Nerf trijumeau", _N),
-    "Trigeminal nerve (V).l": ("FMA50885", "left trigeminal nerve", "Nerf trijumeau", _N),
-    "Maxillary nerve.r": ("FMA52725", "right maxillary nerve", "Nerf maxillaire", _N),
-    "Maxillary nerve.l": ("FMA52726", "left maxillary nerve", "Nerf maxillaire", _N),
-    # Z-Anatomy draws the mandibular nerve as its two trunks ("divisions").
-    "Anterior division of mandibular nerve.r": ("FMA53062", "anterior trunk of right mandibular nerve",
-                                                "Tronc antérieur du nerf mandibulaire", _N),
-    "Anterior division of mandibular nerve.l": ("FMA53063", "anterior trunk of left mandibular nerve",
-                                                "Tronc antérieur du nerf mandibulaire", _N),
-    "Posterior division of mandibular nerve.r": ("FMA53064", "posterior trunk of right mandibular nerve",
-                                                 "Tronc postérieur du nerf mandibulaire", _N),
-    "Posterior division of mandibular nerve.l": ("FMA53065", "posterior trunk of left mandibular nerve",
-                                                 "Tronc postérieur du nerf mandibulaire", _N),
-    "Buccal nerve.r": ("FMA53067", "right buccal nerve", "Nerf buccal", _N),
-    "Buccal nerve.l": ("FMA53068", "left buccal nerve", "Nerf buccal", _N),
-    "Lingual nerve.r": ("FMA53219", "right lingual nerve", "Nerf lingual", _N),
-    "Lingual nerve.l": ("FMA53220", "left lingual nerve", "Nerf lingual", _N),
-    "Inferior alveolar nerve.r": ("FMA53244", "right inferior alveolar nerve", "Nerf alvéolaire inférieur", _N),
-    "Inferior alveolar nerve.l": ("FMA53245", "left inferior alveolar nerve", "Nerf alvéolaire inférieur", _N),
-    "Nerve to mylohyoid muscle.r": ("FMA53248", "right mylohyoid nerve", "Nerf mylohyoïdien", _N),
-    "Nerve to mylohyoid muscle.l": ("FMA53249", "left mylohyoid nerve", "Nerf mylohyoïdien", _N),
-    "Mental nerve.r": ("FMA53251", "right mental nerve", "Nerf mentonnier", _N),
-    "Mental nerve.l": ("FMA53252", "left mental nerve", "Nerf mentonnier", _N),
-    "Abducens nerve (VI).r": ("FMA50886", "right abducens nerve", "Nerf abducens", _N),
-    "Abducens nerve (VI).l": ("FMA50887", "left abducens nerve", "Nerf abducens", _N),
-    "Glossopharyngeal nerve (IX).r": ("FMA50892", "right glossopharyngeal nerve", "Nerf glossopharyngien", _N),
-    "Glossopharyngeal nerve (IX).l": ("FMA50894", "left glossopharyngeal nerve", "Nerf glossopharyngien", _N),
-    "Vagus nerve (X).r": ("FMA6219", "right vagus nerve", "Nerf vague", _N),
-    "Vagus nerve (X).l": ("FMA6220", "left vagus nerve", "Nerf vague", _N),
-    "Accessory nerve (XI).r": ("FMA50897", "right spinal accessory nerve", "Nerf accessoire", _N),
-    "Accessory nerve (XI).l": ("FMA50899", "left spinal accessory nerve", "Nerf accessoire", _N),
-    "Hypoglossal nerve (XII).r": ("FMA50901", "right hypoglossal nerve", "Nerf hypoglosse", _N),
-    "Hypoglossal nerve (XII).l": ("FMA50903", "left hypoglossal nerve", "Nerf hypoglosse", _N),
     # Nerves of the trunk
     "Intercostal nerves.r": ("FMA75467", "set of right intercostal nerves", "Nerfs intercostaux", _N),
     "Intercostal nerves.l": ("FMA75467-L", "set of left intercostal nerves", "Nerfs intercostaux", _N),
@@ -181,15 +140,13 @@ OBJECTS = {
 MESHES = {"Cavernous sinus.r", "Cavernous sinus.l", "Basilar venous plexus", "Ganglia of sympathetic trunk.r",
           "Ganglia of sympathetic trunk.l"}
 # Never read, whatever the tables say: provenance not established as CC BY-SA compatible (see the module docstring).
-EXCLUDED = re.compile(r"facial nerve|chorda tympani|vestibul|cochle|tympan|\bear\b|auditory|semicircular|ossicle|"
+EXCLUDED = re.compile(r"\((I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII)\)|olfactory|optic|oculomotor|trochlear|trigeminal|"
+                      r"ophthalmic nerve|maxillary nerve|mandibular|buccal nerve|lingual nerve|alveolar nerve|"
+                      r"mylohyoid|mental nerve|meningeal|abducens|glossopharyngeal|vagus|accessory nerve|"
+                      r"hypoglossal|facial nerve|chorda tympani|vestibul|cochle|tympan|\bear\b|auditory|semicircular|ossicle|"
                       r"malleus|incus|stapes|kidney|renal|nephr|white matter|tract\b|nucleus|nuclei|gyrus|sulcus|"
                       r"cortex|hemisphere", re.I)
 
-# Parts of objects left out, as a height in Z-Anatomy's world frame (m) below which spline points are dropped. The vagus
-# nerves of Z-Anatomy are reliable in the neck only: below the root of the neck, the left one turns back towards the
-# vertebral column and stops at T2, and the right one runs down to the stomach where it carries the anterior gastric
-# branches, on the left side (those come from the left vagus). Only their cervical part (down to the first ribs) is kept.
-CLIP_BELOW = {"Vagus nerve (X).r": 1.42, "Vagus nerve (X).l": 1.42}
 # Objects that Z-Anatomy draws in the wrong place: their parent offset (parent's world matrix times their parent inverse
 # matrix) is 44.5 mm along y instead of the identity of every other whitelisted object, which puts the straight sinus
 # 4.5 cm in front of the confluence of sinuses (it then ends in the middle cranial fossa) and the occipital sinus inside
@@ -203,9 +160,6 @@ BRIDGE = {"Internal jugular vein.r": "Sigmoid sinus.r", "Internal jugular vein.l
 # Existing structures an object continues: its spline points whose tube touches them are dropped.
 TRIM = {
     "Internal jugular vein.r": ("FMA4754", "FMA4751"), "Internal jugular vein.l": ("FMA4762", "FMA4761"),
-    # BodyParts3D has the superior and inferior branches of the oculomotor nerve, and the ciliary ganglion.
-    "Oculomotor nerve (III).r": ("FMA52574", "FMA52576", "FMA53549"),
-    "Oculomotor nerve (III).l": ("FMA52575", "FMA52577", "FMA53550"),
 }
 # Object -> structure of the model its nearest spline end is extended to (the nearest point of its surface, after
 # registration): the thoracic sympathetic trunk of Z-Anatomy stops 1 cm from the lumbar one of Open3DModel.
@@ -265,8 +219,6 @@ def read(blend, name):
         scale = np.cbrt(abs(np.linalg.det(mat[:3, :3])))
         splines, depth = blend.splines(blend.block(data)[0])
         out = [(p @ mat[:3, :3].T + mat[:3, 3], r * depth * scale) for p, r, _ in splines]
-        if name in CLIP_BELOW:
-            out = [run for p, r in out for run in runs(p, r, p[:, 2] >= CLIP_BELOW[name]) if len(run[0]) > 1]
         return "curve", out
     raise ValueError(f"{name}: object type {typ} unexpected")
 

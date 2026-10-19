@@ -1,6 +1,6 @@
 name: Release models
 
-# Builds the models from BodyParts3D (Open3DModel nerves of the limbs, Z-Anatomy sinuses and nerves) and publishes them as assets of the GitHub Release v<VERSION>.
+# Builds the models from BodyParts3D (Open3DModel nerves of the limbs, Z-Anatomy sinuses and trunk nerves) and publishes them as assets of the GitHub Release v<VERSION>.
 # Runs when VERSION changes on main (bump it to publish), or by hand on main. An existing release is never overwritten.
 on:
   push:
@@ -98,9 +98,10 @@ jobs:
             echo "BodyParts3D, © The Database Center for Life Science, licensed under CC Attribution-Share Alike 2.1 Japan (https://creativecommons.org/licenses/by-sa/2.1/jp/)."
             echo "Nerfs du membre supérieur : \"Open3DModel - Upper limb - English labels\" at AnatomyTOOL.org by Open3D project, Jan Kooloos, RadboudUMC, Eungyeol Lee, LUMC et al, license: Creative Commons Attribution-ShareAlike (https://creativecommons.org/licenses/by-sa/4.0/)."
             echo "Nerfs du membre inférieur (full_body) : \"Open3DModel - Lower limb - English labels\" at AnatomyTOOL.org by Open3D project, Jan Kooloos, RadboudUMC, Eungyeol Lee, LUMC et al, license: Creative Commons Attribution-ShareAlike (https://creativecommons.org/licenses/by-sa/4.0/)."
-            echo "Sinus de la dure-mère, nerfs crâniens et nerfs du tronc (full_body) : \"Z-Anatomy - The libre 3D atlas of anatomy - CC-BY-SA 4.0\" (Gauthier Kervyn, https://www.z-anatomy.com/), license: Creative Commons Attribution-ShareAlike (https://creativecommons.org/licenses/by-sa/4.0/)."
+            echo "Sinus de la dure-mère et nerfs du tronc (full_body) : \"Z-Anatomy - The libre 3D atlas of anatomy - CC-BY-SA 4.0\" (Gauthier Kervyn, https://www.z-anatomy.com/), license: Creative Commons Attribution-ShareAlike (https://creativecommons.org/licenses/by-sa/4.0/)."
             echo "upper_limb et full_body : CC BY-SA 4.0. Voir LICENSE et CREDITS.md."
             echo "Identifiants changés en 1.5.0 (full_body) : FMA7376 → FMA8642, FMA7377 → FMA8644, FMA7365 → FMA9422, FMA7386 → FMA9438 (vaisseaux pulmonaires segmentaires, voir docs/NOMS.md)."
+            echo "Changés en 1.6.0 (full_body) : source de FMA4754/FMA4762 (veines jugulaires internes) → bodyparts3d-4.0+z-anatomy ; FMA6259/FMA6260 (troncs sympathiques) → open3dmodel+z-anatomy, nom français « Tronc sympathique »."
             echo "upper-limb-obj.zip, lower-limb-obj.zip : copies non modifiées des sources Open3DModel (exports OBJ, géométrie seule, CC BY-SA 4.0), épinglées par pipeline/open3d.sha256."
             echo
             echo '```'

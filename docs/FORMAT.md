@@ -6,7 +6,7 @@ nom et ses repères anatomiques `.landmarks.json`.
 | Fichier | Contenu |
 |---|---|
 | `upper_limb.glb` / `.json` | Membre supérieur droit et ceinture scapulaire (MVP) : os, muscles, artères, veines, nerfs |
-| `full_body.glb` / `.json` | Corps entier (contexte), tous systèmes, dont les nerfs des quatre membres, les sinus de la dure-mère, des nerfs crâniens et des nerfs du tronc |
+| `full_body.glb` / `.json` | Corps entier (contexte), tous systèmes, dont les nerfs des quatre membres, les sinus de la dure-mère et des nerfs du tronc |
 | `<modèle>.landmarks.json` | Repères anatomiques : osseux, attaches musculaires, pouls, repères cliniques |
 
 ## Repère
@@ -30,7 +30,7 @@ anatomique. L'ordre des nœuds suit l'ordre d'affichage : `os`, `muscles`, `arte
 | `muscles` | Muscles squelettiques et leurs parties tendineuses : tendons, aponévroses, raphés (ligne blanche, raphé pharyngien), rétinaculums, anneau tendineux commun, tractus iliotibial |
 | `arteres` | Artères |
 | `veines` | Veines, sinus de la dure-mère (Z-Anatomy, `full_body`) |
-| `nerfs` | Nerfs et ganglions (BodyParts3D n'a que des nerfs crâniens et orbitaires ; nerfs des membres : Open3DModel, membre supérieur dans `upper_limb`, membres supérieurs et inférieurs des deux côtés dans `full_body` ; dans `full_body`, nerfs crâniens et nerfs du tronc de Z-Anatomy) |
+| `nerfs` | Nerfs et ganglions (BodyParts3D n'a que des nerfs crâniens et orbitaires ; nerfs des membres : Open3DModel, membre supérieur dans `upper_limb`, membres supérieurs et inférieurs des deux côtés dans `full_body` ; dans `full_body`, nerfs du tronc de Z-Anatomy) |
 | `organes` | Tout le reste : viscères, encéphale, cœur (y compris ses muscles papillaires), cartilages hors côtes (larynx, nez), disques intervertébraux, ligaments et membranes (sauf le ligament inguinal, partie de l'aponévrose de l'oblique externe, rangé en `muscles` comme la ligne blanche) |
 | `peau` | Peau et phanères (cheveux, sourcils, poils pubiens) |
 
@@ -97,7 +97,7 @@ contient ni image, ni texture, ni coordonnées de texture.
 | Modèle | `license.id` | Sources |
 |---|---|---|
 | `upper_limb` | `CC-BY-SA-4.0` | BodyParts3D (CC BY-SA 2.1 JP, adaptable sous une version ultérieure) et Open3DModel membre supérieur (CC BY-SA 4.0) pour les nerfs |
-| `full_body` | `CC-BY-SA-4.0` | BodyParts3D, Open3DModel membres supérieur et inférieur (CC BY-SA 4.0) pour les nerfs des membres et Z-Anatomy (CC BY-SA 4.0) pour les sinus de la dure-mère, des nerfs crâniens et des nerfs du tronc (jusqu'à la 1.4.1 : `CC-BY-SA-2.1-JP`, BodyParts3D seul) |
+| `full_body` | `CC-BY-SA-4.0` | BodyParts3D, Open3DModel membres supérieur et inférieur (CC BY-SA 4.0) pour les nerfs des membres et Z-Anatomy (CC BY-SA 4.0) pour les sinus de la dure-mère et des nerfs du tronc (jusqu'à la 1.4.1 : `CC-BY-SA-2.1-JP`, BodyParts3D seul) |
 
 L'app lit la licence et l'attribution dans le manifeste du modèle affiché (`license`, `attribution`),
 sans les supposer identiques d'un modèle à l'autre.
@@ -136,7 +136,7 @@ sans les supposer identiques d'un modèle à l'autre.
 
 `source` vaut `bodyparts3d-4.0` ou `bodyparts3d-3.0` (os et muscles du membre supérieur, muscles absents de la
 4.0 dans `full_body` : face, mastication, paroi abdominale, grand dorsal…), `open3dmodel` (nerfs des membres) ou
-`z-anatomy` (sinus de la dure-mère, veines ophtalmiques, nerfs crâniens et nerfs du tronc de `full_body`). Une
+`z-anatomy` (sinus de la dure-mère, veines ophtalmiques et nerfs du tronc de `full_body`). Une
 structure dont la géométrie vient de deux sources joint les deux par `+` : `bodyparts3d-4.0+z-anatomy` (veines
 jugulaires internes : 4 cm de BodyParts3D prolongés jusqu'au foramen jugulaire par Z-Anatomy) et
 `open3dmodel+z-anatomy` (troncs sympathiques : parties lombaire et sacrale de l'Open3DModel, cervicale et thoracique
