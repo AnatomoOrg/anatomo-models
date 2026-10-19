@@ -31,6 +31,19 @@ ATTRIBUTION = ("BodyParts3D, © The Database Center for Life Science, licensed u
 LICENSE = {"id": "CC-BY-SA-2.1-JP", "url": "https://creativecommons.org/licenses/by-sa/2.1/jp/"}
 
 
+def rig_manifest(skin):
+    """The `rig` section of the manifest: joints (glTF node names) and movements (glTF animation names)."""
+    joints = skin["joints"]
+    return {
+        "node": "os",
+        "joints": [{"name": j["name"], "fr": j["fr"],
+                    "parent": joints[j["parent"]]["name"] if j["parent"] is not None else None,
+                    "pivot": np.round(j["pivot"], 5).tolist(), "structures": j["structures"]} for j in joints],
+        "movements": [{"key": a["key"], "fr": a["fr"], "side": a["side"], "plane": a["plane"],
+                       "duration": a["duration"], "joints": a["joints"]} for a in skin["animations"]],
+    }
+
+
 def to_gltf(points_mm):
     return np.asarray(points_mm, float) @ BP3D_TO_GLTF.T * 0.001
 
@@ -62,11 +75,14 @@ def decimate(mesh, target):
     return clean(trimesh.Trimesh(v, f, process=True))
 
 
-def build(structures, glb_path, manifest_path, model, version, sources, license=LICENSE, attribution=ATTRIBUTION):
+def build(structures, glb_path, manifest_path, model, version, sources, license=LICENSE, attribution=ATTRIBUTION,
+          rig=None):
     """structures: list of dicts {id, en, fr, system, mesh (trimesh, BodyParts3D frame, mm), source}, and optionally
     fiber (n,3, glTF frame) and tendon (n,) per vertex of mesh (fibers.annotate), for every structure of a system.
 
-    license ({id, url}) and attribution apply to the whole model (glb asset and manifest)."""
+    license ({id, url}) and attribution apply to the whole model (glb asset and manifest).
+    rig: optional function (manifest entries of the os system, os positions) -> rig.build_rig result or None, to skin
+    the bones and add their movements."""
     by_system = {s: sorted((x for x in structures if x["system"] == s), key=lambda x: x["id"]) for s in SYSTEMS}
     assert all(x["system"] in SYSTEMS for x in structures), "unknown system"
     ids = [x["id"] for x in structures]
@@ -99,14 +115,20 @@ def build(structures, glb_path, manifest_path, model, version, sources, license=
                            "structure": np.concatenate(sid), "indices": np.concatenate(idx), "color": color,
                            "fiber": np.concatenate(fib) if fib else None, "tendon": np.concatenate(ten) if ten else None})
         systems.append({"key": system, "node": system, "vertices": nv, "triangles": nt, "structures": len(items)})
+    skin = None
+    if rig is not None and "os" in by_system and by_system["os"]:
+        os_prim = next(p for p in primitives if p["name"] == "os")
+        skin = rig([e for e in entries if e["system"] == "os"], os_prim["positions"])
     write_glb(glb_path, primitives, copyright=attribution,
-              extras={"format": FORMAT, "model": model, "version": version, "license": license})
+              extras={"format": FORMAT, "model": model, "version": version, "license": license}, rig=skin)
     manifest = {
         "format": FORMAT, "model": model, "version": version, "glb": glb_path.rsplit("/", 1)[-1],
         "frame": {"units": "m", "up": "+Y", "anterior": "+Z", "subject_left": "+X"},
         "license": license, "attribution": attribution, "sources": sources,
         "systems": systems, "structures": entries,
     }
+    if skin is not None:
+        manifest["rig"] = rig_manifest(skin)
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=1)
         f.write("\n")

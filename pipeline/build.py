@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import full_body  # noqa: E402
 import upper_limb  # noqa: E402
-from anatomo_models import fibers, landmarks, open3d, open3d_full_body, zanatomy  # noqa: E402
+from anatomo_models import fibers, landmarks, open3d, open3d_full_body, rig, zanatomy  # noqa: E402
 from anatomo_models.bp3d import BP3D  # noqa: E402
 from anatomo_models.landmark_catalog import CATALOGUE  # noqa: E402
 from anatomo_models.model import build  # noqa: E402
@@ -79,8 +79,12 @@ def main():
             raise SystemExit(f"{model}: landmarks without a position: {failed}")
         # Fibre directions run from the origin to the insertion landmarks of the muscles that have them.
         fibers.annotate(items, marks)
-        m = build(items, os.path.join(a.out, f"{model}.glb"), os.path.join(a.out, f"{model}.json"), model, version,
-                  **MODELS[model])
+        # Bones bound to joints placed from the landmarks, and their movements (glTF skin and animations).
+        try:
+            m = build(items, os.path.join(a.out, f"{model}.glb"), os.path.join(a.out, f"{model}.json"), model, version,
+                      **MODELS[model], rig=lambda entries, positions: rig.build_rig(entries, positions, marks))
+        except rig.RigError as e:
+            raise SystemExit(f"{model}: rig: {e}")
         write_landmarks(m, marks, os.path.join(a.out, f"{model}.landmarks.json"))
         report(m, marks)
     if a.only is None and (missing := landmarks.unresolved(names, CATALOGUE)):
@@ -101,6 +105,8 @@ def report(m, marks):
     tris = sum(s["triangles"] for s in m["systems"])
     print(f"{m['model']}: {len(m['structures'])} structures, {tris} triangles, {len(m['systems'])} meshes, "
           f"{len(marks)} landmarks", {s["key"]: s["structures"] for s in m["systems"]})
+    if "rig" in m:
+        print(f"{m['model']}: {len(m['rig']['joints'])} joints, movements:", [x["key"] for x in m["rig"]["movements"]])
 
 
 if __name__ == "__main__":
