@@ -11,7 +11,12 @@ Ce dépôt contient deux types de contenus, sous plusieurs licences.
       - les nerfs de l'Open3DModel (Open3D project, AnatomyTOOL.org ; Jan Kooloos, RadboudUMC ;
         Eungyeol Lee, LUMC et al.), CC BY-SA 4.0 : membre supérieur dans upper_limb, membres
         supérieur et inférieur (des deux côtés) dans full_body. Seule la géométrie (exports OBJ,
-        sans texture) est utilisée.
+        sans texture) est utilisée ;
+      - dans full_body, des objets de Z-Anatomy (Gauthier Kervyn, https://www.z-anatomy.com/),
+        CC BY-SA 4.0 : sinus veineux de la dure-mère, veines ophtalmiques, partie haute des veines
+        jugulaires internes, nerfs intercostaux, troncs sympathiques et leurs rameaux communicants.
+        Seule la géométrie d'une liste blanche explicite d'objets est lue (provenance : CREDITS.md) ;
+        aucun nerf crânien de Z-Anatomy n'est repris.
       Ils sont distribués sous la licence Creative Commons Attribution - Partage dans les mêmes
       conditions 4.0 International (CC BY-SA 4.0).
       Texte : LICENSES/CC-BY-SA-4.0.txt
@@ -31,5 +36,7 @@ Ce dépôt contient deux types de contenus, sous plusieurs licences.
 2. Code du pipeline (pipeline/, tests/, .github/) : licence MIT
    Texte : LICENSES/MIT.txt
 
-Aucun composant sous clause « pas d'utilisation commerciale » (NC) n'est utilisé : les textures
-de l'Open3DModel (CC BY-NC-SA) ne sont ni téléchargées ni incluses.
+Aucun composant sous clause « pas d'utilisation commerciale » (NC) ou « pas de modification » (ND)
+n'est utilisé : les textures de l'Open3DModel (CC BY-NC-SA) ne sont ni téléchargées ni incluses ; les
+parties non commerciales de Z-Anatomy (oreille interne, CC BY-NC-SA 4.0 ; rein, CC BY-NC 4.0) ne sont
+ni lues ni redistribuées (le fichier Z-Anatomy.zip, qui les contient, n'est pas republié).

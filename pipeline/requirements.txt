@@ -3,4 +3,5 @@ trimesh==5.1.1
 fast-simplification==0.2.0
 scipy==1.18.1
 networkx==3.7
+rtree==1.4.1
 pytest==9.1.1

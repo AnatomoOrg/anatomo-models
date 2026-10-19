@@ -1,8 +1,10 @@
-"""Build the published models from BodyParts3D (and Open3DModel for the nerves of the limbs).
+"""Build the published models from BodyParts3D (Open3DModel for the nerves of the limbs, Z-Anatomy for the dural
+sinuses, orbital veins and nerves of the trunk of the whole body).
 
-Usage: python3 pipeline/build.py SRC_DIR OUT_DIR [--only upper_limb|full_body] [--open3d DIR]
+Usage: python3 pipeline/build.py SRC_DIR OUT_DIR [--only upper_limb|full_body] [--open3d DIR] [--zanatomy DIR]
 SRC_DIR holds the BodyParts3D files fetched by pipeline/fetch_bp3d.sh; the Open3DModel OBJs (upper and
-lower limb) fetched by pipeline/fetch_open3d.sh are read from DIR (default SRC_DIR/open3d).
+lower limb) fetched by pipeline/fetch_open3d.sh are read from DIR (default SRC_DIR/open3d), Z-Anatomy's
+Startup.blend fetched by pipeline/fetch_zanatomy.sh from the --zanatomy DIR (default SRC_DIR/zanatomy).
 """
 import argparse
 import json
@@ -13,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import full_body  # noqa: E402
 import upper_limb  # noqa: E402
-from anatomo_models import fibers, landmarks, open3d, open3d_full_body  # noqa: E402
+from anatomo_models import fibers, landmarks, open3d, open3d_full_body, zanatomy  # noqa: E402
 from anatomo_models.bp3d import BP3D  # noqa: E402
 from anatomo_models.landmark_catalog import CATALOGUE  # noqa: E402
 from anatomo_models.model import build  # noqa: E402
@@ -28,13 +30,14 @@ SOURCES = [
 ]
 # Structure counts of the last reviewed build: fewer means a selection rule or a source file regressed.
 # upper_limb: 161 BodyParts3D structures + 48 Open3DModel nerves.
-# full_body: 1734 BodyParts3D structures + 220 Open3DModel nerves (48 upper-limb and 62 lower-limb concepts, x 2 sides).
-MIN_STRUCTURES = {"upper_limb": 209, "full_body": 1954}
+# full_body: 1734 BodyParts3D structures + 220 Open3DModel nerves (48 upper-limb and 62 lower-limb concepts, x 2 sides)
+# + 25 Z-Anatomy structures (29 concepts, 4 of which complete a structure already there).
+MIN_STRUCTURES = {"upper_limb": 209, "full_body": 1979}
 # Both models include Open3DModel nerves (CC BY-SA 4.0): they are published under CC BY-SA 4.0.
 MODELS = {
     "upper_limb": {"sources": SOURCES + [open3d.SOURCE], "license": open3d.LICENSE, "attribution": open3d.ATTRIBUTION},
-    "full_body": {"sources": SOURCES + open3d_full_body.SOURCES, "license": open3d_full_body.LICENSE,
-                  "attribution": open3d_full_body.ATTRIBUTION},
+    "full_body": {"sources": SOURCES + open3d_full_body.SOURCES + [zanatomy.SOURCE], "license": open3d_full_body.LICENSE,
+                  "attribution": zanatomy.ATTRIBUTION},
 }
 
 
@@ -43,6 +46,7 @@ def main():
     ap.add_argument("src"); ap.add_argument("out")
     ap.add_argument("--only", choices=("upper_limb", "full_body"))
     ap.add_argument("--open3d", help="directory of upper-limb.obj and lower-limb.obj (default: SRC/open3d)")
+    ap.add_argument("--zanatomy", help="directory of Z-Anatomy's Startup.blend (default: SRC/zanatomy)")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     version = open(os.path.join(ROOT, "VERSION")).read().strip()
@@ -50,6 +54,7 @@ def main():
     bp = BP3D(a.src)
     names, overridden = set(), set()
     o3d = a.open3d or os.path.join(a.src, "open3d")
+    zan = a.zanatomy or os.path.join(a.src, "zanatomy")
 
     def upper_limb_items():
         items = upper_limb.structures(bp, fr)
@@ -57,7 +62,8 @@ def main():
 
     def full_body_items():
         items = full_body.structures(bp, fr)
-        return items + open3d_full_body.nerves(o3d, items)
+        items += open3d_full_body.nerves(o3d, items)
+        return items + zanatomy.structures(os.path.join(zan, zanatomy.BLEND), items)
 
     for model, structures in (("upper_limb", upper_limb_items), ("full_body", full_body_items)):
         if a.only not in (None, model):
