@@ -12,10 +12,13 @@ from scipy.spatial import cKDTree
 # Published distance allowed between the meshes of a junction that is closed in the source (mm).
 MAX_GAP = 1.0
 
-# Parent -> branch (or tributary) pairs of full_body, from the aorta and the venae cavae to the limbs: their meshes
-# touch or cross in the BodyParts3D source (surface distance 0, measured with mesh_distance). Junctions that are open in
+# Parent -> branch (or tributary) pairs of full_body, from the aorta and the venae cavae to the limbs, and from the dural
+# sinuses (Z-Anatomy) to the internal jugular veins: their meshes touch or cross in the source (surface distance 0,
+# measured with mesh_distance; the sigmoid sinus -> internal jugular vein junction once zanatomy.BRIDGE closes the 7 mm
+# Z-Anatomy leaves at the jugular bulb). Junctions that are open in
 # the source itself are not listed, the build cannot close them: common -> internal carotid (63 mm),
-# subclavian -> vertebral artery (50 mm), popliteal -> posterior tibial vein (36 mm).
+# subclavian -> vertebral artery (50 mm), popliteal -> posterior tibial vein (36 mm), cavernous -> anterior intercavernous
+# sinus (3 mm in Z-Anatomy).
 JUNCTIONS = {
     "full_body": [
         ("FMA3736", "FMA3768"),  # ascending aorta -> arch of aorta
@@ -99,6 +102,27 @@ JUNCTIONS = {
         ("FMA14331", "FMA15391"),  # splenic vein -> inferior mesenteric vein
         ("FMA14336", "FMA14345"),  # left renal vein -> left testicular vein
         ("FMA14336", "FMA14349"),  # left renal vein -> left suprarenal vein
+        # Dural venous sinuses (Z-Anatomy, zanatomy.py), down to the internal jugular veins
+        ("FMA50767", "FMA50764"),  # superior sagittal sinus -> right transverse sinus (confluence)
+        ("FMA50767", "FMA50765"),  # superior sagittal sinus -> left transverse sinus (confluence)
+        ("FMA50769", "FMA50764"),  # straight sinus -> right transverse sinus (confluence)
+        ("FMA50769", "FMA50765"),  # straight sinus -> left transverse sinus (confluence)
+        ("FMA50768", "FMA50769"),  # inferior sagittal sinus -> straight sinus
+        ("FMA50781", "FMA50764"),  # occipital sinus -> right transverse sinus (confluence)
+        ("FMA50764", "FMA51293"),  # right transverse sinus -> right sigmoid sinus
+        ("FMA50765", "FMA51294"),  # left transverse sinus -> left sigmoid sinus
+        ("FMA51293", "FMA4754"),  # right sigmoid sinus -> right internal jugular vein
+        ("FMA51294", "FMA4762"),  # left sigmoid sinus -> left internal jugular vein
+        ("FMA51291", "FMA4754"),  # right inferior petrosal sinus -> right internal jugular vein
+        ("FMA51292", "FMA4762"),  # left inferior petrosal sinus -> left internal jugular vein
+        ("FMA51289", "FMA51293"),  # right superior petrosal sinus -> right sigmoid sinus
+        ("FMA51290", "FMA51294"),  # left superior petrosal sinus -> left sigmoid sinus
+        ("FMA51402", "FMA51289"),  # right cavernous sinus -> right superior petrosal sinus
+        ("FMA51403", "FMA51290"),  # left cavernous sinus -> left superior petrosal sinus
+        ("FMA51402", "FMA51291"),  # right cavernous sinus -> right inferior petrosal sinus
+        ("FMA51403", "FMA51292"),  # left cavernous sinus -> left inferior petrosal sinus
+        ("FMA51402", "FMA51248"),  # right cavernous sinus -> right superior ophthalmic vein
+        ("FMA51403", "FMA51249"),  # left cavernous sinus -> left superior ophthalmic vein
     ],
 }
 

@@ -1,6 +1,6 @@
 name: Release models
 
-# Builds the models from BodyParts3D (and the Open3DModel nerves of the limbs) and publishes them as assets of the GitHub Release v<VERSION>.
+# Builds the models from BodyParts3D (Open3DModel nerves of the limbs, Z-Anatomy sinuses and nerves) and publishes them as assets of the GitHub Release v<VERSION>.
 # Runs when VERSION changes on main (bump it to publish), or by hand on main. An existing release is never overwritten.
 on:
   push:
@@ -49,7 +49,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: bp3d
-          key: bp3d-${{ hashFiles('pipeline/bp3d.sha256', 'pipeline/open3d.sha256') }}
+          key: bp3d-${{ hashFiles('pipeline/bp3d.sha256', 'pipeline/open3d.sha256', 'pipeline/zanatomy.sha256') }}
       - if: steps.v.outputs.exists != 'true'
         name: Build
         run: |
@@ -57,12 +57,14 @@ jobs:
           npm install --no-save gltf-validator@2.0.0-dev.3.10
           pipeline/fetch_bp3d.sh bp3d
           pipeline/fetch_open3d.sh bp3d/open3d
+          pipeline/fetch_zanatomy.sh bp3d/zanatomy
           python pipeline/build.py bp3d build
           python pipeline/check.py build/upper_limb.json build/full_body.json | tee build/check.txt
           node pipeline/validate_gltf.js build/upper_limb.glb build/full_body.glb
           cp LICENSE CREDITS.md LICENSES/CC-BY-SA-2.1-JP.txt LICENSES/CC-BY-SA-4.0.txt build/
           # Mirror of the pinned Open3DModel sources (their upstream URLs are not versioned), published with the release:
-          # pipeline/fetch_open3d.sh tries it before the upstream URL.
+          # pipeline/fetch_open3d.sh tries it before the upstream URL. Z-Anatomy's zip is not mirrored: its URL is pinned
+          # by commit, and the zip also holds third-party parts under non-commercial licences that we do not republish.
           cp bp3d/open3d/upper-limb-obj.zip bp3d/open3d/lower-limb-obj.zip build/
           (cd build && sha256sum *.glb *.json upper-limb-obj.zip lower-limb-obj.zip > SHA256SUMS)
       - if: steps.v.outputs.exists != 'true'
@@ -96,6 +98,7 @@ jobs:
             echo "BodyParts3D, © The Database Center for Life Science, licensed under CC Attribution-Share Alike 2.1 Japan (https://creativecommons.org/licenses/by-sa/2.1/jp/)."
             echo "Nerfs du membre supérieur : \"Open3DModel - Upper limb - English labels\" at AnatomyTOOL.org by Open3D project, Jan Kooloos, RadboudUMC, Eungyeol Lee, LUMC et al, license: Creative Commons Attribution-ShareAlike (https://creativecommons.org/licenses/by-sa/4.0/)."
             echo "Nerfs du membre inférieur (full_body) : \"Open3DModel - Lower limb - English labels\" at AnatomyTOOL.org by Open3D project, Jan Kooloos, RadboudUMC, Eungyeol Lee, LUMC et al, license: Creative Commons Attribution-ShareAlike (https://creativecommons.org/licenses/by-sa/4.0/)."
+            echo "Sinus de la dure-mère, nerfs crâniens et nerfs du tronc (full_body) : \"Z-Anatomy - The libre 3D atlas of anatomy - CC-BY-SA 4.0\" (Gauthier Kervyn, https://www.z-anatomy.com/), license: Creative Commons Attribution-ShareAlike (https://creativecommons.org/licenses/by-sa/4.0/)."
             echo "upper_limb et full_body : CC BY-SA 4.0. Voir LICENSE et CREDITS.md."
             echo "Identifiants changés en 1.5.0 (full_body) : FMA7376 → FMA8642, FMA7377 → FMA8644, FMA7365 → FMA9422, FMA7386 → FMA9438 (vaisseaux pulmonaires segmentaires, voir docs/NOMS.md)."
             echo "upper-limb-obj.zip, lower-limb-obj.zip : copies non modifiées des sources Open3DModel (exports OBJ, géométrie seule, CC BY-SA 4.0), épinglées par pipeline/open3d.sha256."

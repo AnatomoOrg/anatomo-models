@@ -164,17 +164,19 @@ def _icp(a, target, iterations=50, trim=0.9):
     return r, t, float(np.sqrt(np.mean(d ** 2)))
 
 
-def refine(src, items, bones, m, t, log=print, label="open3d"):
+def refine(src, items, bones, m, t, log=print, label="open3d", to_frame=None):
     """Per-bone rigid ICP after the similarity (m, t); returns the displacement field of the bones.
 
     src: Open3D meshes (glTF frame, m); bones: {Open3D bone: model FMA id}. Points of a bone move by its own
-    rigid fit; a bone that several objects map to (sacrum and coccyx) is fitted as one."""
+    rigid fit; a bone that several objects map to (sacrum and coccyx) is fitted as one. to_frame: source vertices ->
+    BodyParts3D axes in mm (default open3d.to_bp3d, from the glTF frame in metres)."""
+    to_frame = to_frame or open3d.to_bp3d
     by_id = {x["id"]: x for x in items}
     rng = np.random.default_rng(0)
     points, shifts, report, sq, n = [], [], [], 0.0, 0
     for fid in dict.fromkeys(bones.values()):
         objs = [o for o, f in bones.items() if f == fid]
-        a = np.concatenate([open3d.to_bp3d(src[o].vertices) for o in objs]) @ m.T + t
+        a = np.concatenate([to_frame(src[o].vertices) for o in objs]) @ m.T + t
         x = by_id[fid]
         target = open3d._surface_points(x["src"] if x.get("src") is not None else x["mesh"])
         r, tt, rms = _icp(a, target)
