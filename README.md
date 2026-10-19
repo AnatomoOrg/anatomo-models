@@ -30,8 +30,9 @@ Depuis la 1.7.0, le squelette est articulé : le maillage des os porte une peau 
 articulation placée sur la géométrie et les repères osseux) et des animations, les mouvements (flexion du coude,
 abduction des épaules, marche simplifiée…), qui partent de la position anatomique et y reviennent
 (`pipeline/anatomo_models/rig.py`, [`docs/FORMAT.md`](docs/FORMAT.md#squelette-articulé-et-mouvements-rig-optionnel)).
-Avec three.js, le maillage `os` est donc un `SkinnedMesh` : copier la scène avec `SkeletonUtils.clone`, pas
-`Object3D.clone`.
+Depuis la 1.8.0, les muscles, vaisseaux, nerfs, organes et la peau suivent aussi les os (poids selon les os les
+plus proches). Avec three.js, ces maillages sont donc des `SkinnedMesh` : copier la scène avec
+`SkeletonUtils.clone`, pas `Object3D.clone`.
 
 ## Construire
 
