@@ -33,6 +33,9 @@ def check(manifest_path):
         if "JOINTS_0" in n or "WEIGHTS_0" in n:  # optional: the os mesh, then the others (rig.skinned)
             assert "JOINTS_0" in n and "WEIGHTS_0" in n, f"{sys_['key']}: skin attributes"
             assert "rig" in m, f"{sys_['key']}: a skin (JOINTS_0) but the manifest has no rig section"
+        if "_BULGE" in n:  # optional, muscles only (rig.bulge)
+            assert sys_["key"] == "muscles" and m.get("rig", {}).get("bulge", {}).get("node") == "muscles", sys_["key"]
+            assert len(n["_BULGE"]) == len(sid) and np.all(np.isfinite(n["_BULGE"]))
         if "_FIBER" in n or "_TENDON" in n:  # optional, muscles only
             assert sys_["key"] == "muscles" and "_FIBER" in n and "_TENDON" in n, sys_["key"]
             assert len(n["_FIBER"]) == len(n["_TENDON"]) == len(sid)
@@ -135,7 +138,36 @@ def check_rig(m, gltf, nodes, accessor):
                 rest = np.asarray(node.get("translation", [0, 0, 0]))
                 assert np.allclose(v[[0, -1]], rest, atol=1e-6), f"{mv['key']}: does not start and end at rest"
         assert moved == set(mv["joints"]), mv["key"]
-    return f", {len(names)} joints, {len(anims)} movements"
+    worked = check_muscles(m, nodes)
+    return f", {len(names)} joints, {len(anims)} movements, {worked} muscles that swell"
+
+
+def check_muscles(m, nodes):
+    """Contraction curves of the movements (rig.movements[].muscles) and the bulge of the muscles that work."""
+    rig = m["rig"]
+    by_id = {s["id"]: s for s in m["structures"]}
+    worked = set()
+    for mv in rig["movements"]:
+        seen = set()
+        for g in mv.get("muscles", []):
+            v = np.asarray(g["values"], float)
+            assert len(v) >= 2 and v[0] == 0 and v[-1] == 0, f"{mv['key']}: a contraction does not start and end at rest"
+            assert v.min() >= -1 and v.max() <= 1, mv["key"]
+            for sid in g["structures"]:
+                assert by_id[sid]["system"] == "muscles" and sid not in seen, f"{mv['key']}: {sid}"
+                seen.add(sid)
+        worked |= seen
+    if "bulge" not in rig:
+        assert not worked, "contraction curves without a bulge"
+        return 0
+    assert rig["bulge"]["node"] == "muscles" and rig["bulge"]["scale"] > 0
+    off = np.linalg.norm(nodes["muscles"]["_BULGE"], axis=1)
+    for s in m["structures"]:
+        if s["system"] == "muscles":
+            v0, vn = s["vertices"]
+            swells = off[v0:v0 + vn].max() > 0
+            assert swells == (s["id"] in worked) or (s["id"] in worked and vn < 8), f"bulge of {s['id']}"
+    return len(worked)
 
 
 def structure_mesh(s, nodes):

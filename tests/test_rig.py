@@ -482,3 +482,75 @@ def test_check_catches_a_pivot_off_its_node(tmp_path):
     json.dump(m, open(tmp_path / "x.json", "w"))
     with pytest.raises(AssertionError, match="do not add up"):
         check.check(str(tmp_path / "x.json"))
+
+
+def test_working_muscles_swell(tmp_path):
+    from anatomo_models import contraction
+    items, marks = arm()
+    front, back = np.array([0, 0, 0.02]), np.array([0, 0, -0.02])
+    top, low = HEAD + [0, -0.05, 0], ELBOW + [0, 0.02, 0]
+    items += [
+        dict(id="FMA910", en="long head of right biceps brachii", fr="biceps", system="muscles", source="t",
+             mesh=_bp3d(_fine(_rod(top + front, low + front, 0.012)))),
+        dict(id="FMA911", en="long head of right triceps brachii", fr="triceps", system="muscles", source="t",
+             mesh=_bp3d(_fine(_rod(top + back, low + back, 0.012)))),
+        dict(id="FMA912", en="right subclavius", fr="subclavier", system="muscles", source="t",
+             mesh=_bp3d(_fine(_rod(SC + [0, -0.01, 0.01], HEAD + [0.03, 0.01, 0.01], 0.005)))),
+    ]
+    m = built(tmp_path, items, marks)
+    check.check(str(tmp_path / "x.json"))
+    mv = {x["key"]: x for x in m["rig"]["movements"]}
+    curve = {s: g["values"] for g in mv["flexion-coude"]["muscles"] for s in g["structures"]}
+    # Elbow flexion: the biceps contracts fully (135 degrees, beyond its full range), the triceps is lengthened.
+    assert set(curve) == {"FMA910", "FMA911"}
+    assert max(curve["FMA910"]) == 1 and min(curve["FMA910"]) == 0
+    assert min(curve["FMA911"]) == -contraction.CONTRACT_STRETCH and max(curve["FMA911"]) == 0
+    assert len(curve["FMA910"]) == 4 * 24 + 1
+    # Pronation with the elbow at 90 degrees: the biceps works for the elbow.
+    pro = {s: g["values"] for g in mv["pronation-supination"]["muscles"] for s in g["structures"]}
+    assert max(pro["FMA910"]) == 0.75
+    gltf, nodes = read_glb(str(tmp_path / "x.glb"))
+    scale = m["rig"]["bulge"]["scale"]
+    p, n, off = (nodes["muscles"][k] for k in ("POSITION", "NORMAL", "_BULGE"))
+    off = off * scale
+    by_id = {s["id"]: s for s in m["structures"]}
+    for sid in ("FMA910", "FMA911"):
+        v0, k = by_id[sid]["vertices"]
+        q, o, nn = p[v0:v0 + k], off[v0:v0 + k], n[v0:v0 + k]
+        mid = np.abs(q[:, 1] - (top[1] + low[1]) / 2) < 0.01
+        ends = (q[:, 1] > top[1] - 0.003) | (q[:, 1] < low[1] + 0.003)
+        # Outwards along the normals, some 30 % of the radius at the middle of the belly, nothing at the ends.
+        assert np.all(np.einsum("ij,ij->i", o[mid], nn[mid]) > 0.7 * contraction.BULGE * 0.012)
+        assert np.abs(o[mid]).max() < 0.012 * contraction.BULGE * 1.5
+        assert np.abs(o[ends]).max() < 0.0015
+    # A muscle that works in no movement does not swell.
+    v0, k = by_id["FMA912"]["vertices"]
+    assert np.abs(off[v0:v0 + k]).max() == 0
+
+
+def test_contraction_sides():
+    from anatomo_models.contraction import contraction
+    k = np.array([0.0, 1.0, 0.0])
+    turn_left = {**{(f"cervicale-{i}", "rotation"): 5 * k for i in range(2, 8)}, ("atlas", "rotation"): 40 * k}
+    # Turning the head to the left: the right sternocleidomastoid and the left splenius work.
+    assert contraction("right sternocleidomastoid", turn_left)[1] == 1
+    assert contraction("left sternocleidomastoid", turn_left)[1] < 0
+    assert contraction("left splenius capitis", turn_left)[1] == 1
+    assert contraction("right splenius capitis", turn_left)[1] < 0
+    bend_right = {(f"lombaire-{i}", "inclinaison"): 6 * k for i in range(1, 6)}
+    assert contraction("right external oblique", bend_right)[1] == 1
+    assert contraction("left external oblique", bend_right)[1] < 0
+    # A muscle of one side ignores the joints of the other.
+    assert contraction("left biceps brachii", {("coude-d", "flexion"): 90 * k}) is None
+    assert contraction("long head of right biceps brachii", {("coude-d", "flexion"): 60 * k})[1] == 0.5
+    assert contraction("right subclavius", {("coude-d", "flexion"): 60 * k}) is None
+
+
+def test_contraction_names_do_not_overlap():
+    from anatomo_models.contraction import actions_of
+    # « brachialis » is not « coracobrachialis », « spinalis » not « semispinalis » nor « interspinalis ».
+    assert actions_of("right coracobrachialis") and all(a[0] == ("epaule",) for a in actions_of("right coracobrachialis"))
+    assert actions_of("right brachialis")[0][:2] == (("coude",), "flexion")
+    assert actions_of("right semispinalis thoracis") == [] and actions_of("right interspinalis thoracis") == []
+    assert actions_of("right spinalis thoracis")
+    assert actions_of("right temporoparietalis") == [] and actions_of("right temporalis")

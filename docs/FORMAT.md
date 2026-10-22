@@ -51,6 +51,7 @@ Attributs de sommet :
 | `_STRUCTURE` | `_structure` | `float` | Indice de la structure dans le manifeste (entier exact) |
 | `_FIBER` | `_fiber` | `vec3` byte normalisé | Direction des fibres musculaires (unitaire, tangente à la surface lissée, sans sens) ; `muscles` seulement, optionnel |
 | `_TENDON` | `_tendon` | `float` (ubyte normalisé) | Masque tendon : 0 = charnu, 1 = tendon ; `muscles` seulement, optionnel |
+| `_BULGE` | `_bulge` | `vec3` byte normalisé | Déplacement du sommet à contraction pleine, en unités de `rig.bulge.scale` mètres (1.9.0) ; nul pour les muscles qui ne travaillent dans aucun mouvement ; `muscles` seulement, optionnel |
 | `JOINTS_0` | `skinIndex` | `vec4` ubyte | `os` : l'articulation qui porte le sommet, puis 0, 0, 0 ; autres systèmes (1.8.0) : jusqu'à 4 articulations ; optionnel |
 | `WEIGHTS_0` | `skinWeight` | `vec4` ubyte normalisé | `os` : toujours 1, 0, 0, 0 (os rigides) ; autres systèmes : poids de somme 1, le plus lourd d'abord ; optionnel |
 
@@ -205,6 +206,29 @@ les liste).
 Les mouvements d'un côté sont joués à droite. Jusqu'à la 1.7.0, les autres systèmes n'avaient pas de peau et ne
 suivaient pas les os ; depuis la 1.8.0, ils les suivent (`rig.skinned`).
 
+#### Muscles qui travaillent (1.9.0)
+
+Pendant un mouvement, ses muscles moteurs se contractent : ils gonflent, et leurs antagonistes, étirés, s'amincissent
+un peu. Chaque mouvement de `rig.movements` porte `muscles`, une liste de courbes de contraction échantillonnées
+régulièrement de 0 à `duration` (une valeur par image d'animation, 24 par seconde), chacune pour un groupe de
+structures du système `muscles` :
+
+- **+1** : le muscle raccourci au maximum (le mouvement qu'il produit à son amplitude pleine) ;
+- **0** : au repos, au début et à la fin de chaque mouvement ;
+- **−0,4** au plus : le muscle étiré par le mouvement opposé, un peu plus mince.
+
+Les courbes suivent les angles des articulations du mouvement, à travers un tableau des muscles moteurs de chaque
+degré de liberté (`pipeline/anatomo_models/contraction.py`, tableau de manuel, pas une mesure d'activité ; un muscle
+qui ne fait que stabiliser est laissé de côté). Un muscle produit au plus une contraction par instant : la plus forte
+de ses actions ; il n'est étiré que s'il ne produit rien.
+
+La forme contractée est l'attribut `_BULGE` du maillage `muscles` : à ajouter à la position **avant** la peau,
+multiplié par la contraction (`position + _BULGE × rig.bulge.scale × contraction`). Le ventre du muscle gonfle le long
+des normales, au plus au milieu de la longueur de ses fibres (60 % de sa demi-épaisseur, accentué pour se lire sur un téléphone), pas du tout aux extrémités ni
+sur les tendons (`_TENDON`) : le muscle garde ses attaches. Un lecteur qui ignore `_BULGE` voit les muscles suivre les
+os sans gonfler, comme en 1.8.0. Coût : 4 octets par sommet du maillage `muscles` : `full_body` 67,7 → 69,0 Mo,
+`upper_limb` 23,0 → 23,8 Mo.
+
 Coût : 8 octets par sommet (`JOINTS_0` + `WEIGHTS_0`) de chaque maillage à peau, plus les animations : +0,31 Mo pour
 `upper_limb` (6 articulations, 5 mouvements), +0,67 Mo pour `full_body` (35 articulations, 15 mouvements), soit
 1 à 1,5 % du fichier en 1.7.0 (os seuls). Les parties molles ajoutent 8 octets par sommet en 1.8.0 : +8,2 Mo pour
@@ -259,8 +283,12 @@ sans les supposer identiques d'un modèle à l'autre.
     ],
     "movements": [                // dans l'ordre des animations du glb, `key` = nom de l'animation
       {"key": "flexion-coude", "fr": "Flexion du coude", "side": "right", "plane": "sagittal", "duration": 4.0,
-       "joints": ["coude-d"]}
-    ]
+       "joints": ["coude-d"],
+       "muscles": [                // 1.9.0 : courbes de contraction, 24 valeurs par seconde, voir plus haut
+         {"structures": ["FMA37670", "FMA37689"], "values": [0, 0.01, 0.02, "…", 0]}
+       ]}
+    ],
+    "bulge": {"node": "muscles", "scale": 0.00512}  // 1.9.0 : `_BULGE` × scale = mètres
   }
 }
 ```

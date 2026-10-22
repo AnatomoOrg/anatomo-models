@@ -9,6 +9,9 @@ three.js exposes it as `geometry.attributes._structure`.
 Optional (muscles): `_FIBER`, the unit fibre direction (VEC3, normalized BYTE), and `_TENDON`, the tendon
 mask in [0, 1] (SCALAR, normalized UNSIGNED_BYTE), each in its own bufferView with a 4-byte stride.
 
+Optional (muscles, see contraction.py): `_BULGE`, the offset of each vertex at full contraction (VEC3, normalized
+BYTE, in units of the manifest's rig.bulge.scale metres, 4-byte stride), zero for the muscles that never work.
+
 Optional (bones, see rig.py): a skin. The `os` mesh then has JOINTS_0 (VEC4 UNSIGNED_BYTE, the joint first, then
 zeros) and WEIGHTS_0 (VEC4 normalized UNSIGNED_BYTE, 1 0 0 0: rigid bones), the joints are nodes after the system
 nodes, and the movements are animations of their rotations. The other meshes share the skin, with up to 4 joints
@@ -82,6 +85,11 @@ def write_glb(path, primitives, copyright=None, extras=None, rig=None):
             ten[:, 0] = np.round(np.clip(np.asarray(p["tendon"], float), 0, 1) * 255)
             attrs["_FIBER"] = add(fib, BYTE, "VEC3", ARRAY_BUFFER, stride=4, normalized=True)
             attrs["_TENDON"] = add(ten, UBYTE, "SCALAR", ARRAY_BUFFER, stride=4, normalized=True)
+        if p.get("bulge") is not None:
+            # Offsets at full contraction, in units of bulge_scale (m): normalized BYTE, 4-byte aligned like _FIBER.
+            bul = np.zeros((len(pos), 4), np.int8)
+            bul[:, :3] = np.round(np.clip(np.asarray(p["bulge"], float) / p["bulge_scale"], -1, 1) * 127)
+            attrs["_BULGE"] = add(bul, BYTE, "VEC3", ARRAY_BUFFER, stride=4, normalized=True)
         if rig is not None and p["name"] == "os":
             vj = np.asarray(rig["vertex_joint"])
             assert len(vj) == len(pos) and vj.max() < len(rig["joints"]) <= 256
