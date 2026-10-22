@@ -14,6 +14,8 @@ import re
 
 import numpy as np
 import trimesh
+# Embree (embreex, requirements.txt): the pure-Python ray test takes hours on the whole body's muscles.
+from trimesh.ray.ray_pyembree import RayMeshIntersector
 
 from .rig import joint_name
 
@@ -138,7 +140,7 @@ def _thickness(mesh):
     then averaged over the vertex's neighbours. A vertex whose ray finds nothing takes the median."""
     v, n = np.asarray(mesh.vertices, float), np.asarray(mesh.vertex_normals, float)
     hit = np.full(len(v), np.nan)
-    locations, rays, _ = mesh.ray.intersects_location(v - n * 1e-5, -n, multiple_hits=False)
+    locations, rays, _ = RayMeshIntersector(mesh).intersects_location(v - n * 1e-5, -n, multiple_hits=False)
     hit[rays] = np.linalg.norm(locations - v[rays], axis=1)
     hit[hit < 1e-4] = np.nan
     median = np.nanmedian(hit) if np.isfinite(hit).any() else 0.0
