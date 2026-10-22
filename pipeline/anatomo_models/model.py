@@ -12,6 +12,7 @@ import numpy as np
 import trimesh
 
 from .glb import write_glb
+from .contraction import bulge, muscle_curves
 from .rig import SoftSkin
 
 FORMAT = "anatomo-models/1"
@@ -42,7 +43,10 @@ def rig_manifest(skin):
                     "parent": joints[j["parent"]]["name"] if j["parent"] is not None else None,
                     "pivot": np.round(j["pivot"], 5).tolist(), "structures": j["structures"]} for j in joints],
         "movements": [{"key": a["key"], "fr": a["fr"], "side": a["side"], "plane": a["plane"],
-                       "duration": a["duration"], "joints": a["joints"]} for a in skin["animations"]],
+                       "duration": a["duration"], "joints": a["joints"],
+                       **({"muscles": skin["muscles"][a["key"]]} if "muscles" in skin else {})}
+                      for a in skin["animations"]],
+        **({"bulge": {"node": "muscles", "scale": skin["bulge_scale"]}} if "bulge_scale" in skin else {}),
     }
 
 
@@ -129,6 +133,21 @@ def build(structures, glb_path, manifest_path, model, version, sources, license=
                     ranges = [tuple(e["vertices"]) for e in entries if e["system"] == p["name"]]
                     skin["soft"][p["name"]] = soft.weights(p["positions"], p["indices"], ranges,
                                                            envelope=p["name"] == "peau", muscles=p["name"] == "muscles")
+            # The muscles that work in each movement swell (contraction.py).
+            muscles = next((p for p in primitives if p["name"] == "muscles"), None)
+            if muscles is not None:
+                mentries = [e for e in entries if e["system"] == "muscles"]
+                skin["muscles"] = muscle_curves(mentries, skin["animations"])
+                working = {i for groups in skin["muscles"].values() for g in groups for i in g["structures"]}
+                ranges = [(tuple(e["vertices"]), tuple(e["triangles"])) for e in mentries if e["id"] in working]
+                offsets = bulge(muscles["positions"], muscles["normals"], muscles["indices"], muscles["fiber"],
+                                muscles["tendon"], ranges)
+                # Quantized on 127 steps of the widest offset (glb.py): a scale rounded up keeps them in range.
+                scale = float(np.ceil(np.abs(offsets).max() * 1e5) / 1e5)
+                if scale > 0:
+                    muscles["bulge"], muscles["bulge_scale"], skin["bulge_scale"] = offsets, scale, scale
+                else:
+                    skin.pop("muscles")
     write_glb(glb_path, primitives, copyright=attribution,
               extras={"format": FORMAT, "model": model, "version": version, "license": license}, rig=skin)
     manifest = {

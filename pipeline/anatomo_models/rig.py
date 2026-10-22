@@ -477,7 +477,8 @@ def build_rig(structures, positions, marks):
               parents before children;
       vertex_joint: (N,) joint index per vertex of the os mesh;
       animations: [{key, fr, plane, side, duration, joints [names],
-                    channels [{joint (index), path ("rotation" or "translation"), times (K,), values (K,4|3)}]}];
+                    channels [{joint (index), path ("rotation" or "translation"), times (K,), values (K,4|3)}],
+                    angles {(joint name, dof): (K,) degrees at the movement's keys}}];
       measures: {name: value}, for the build report (patella gap, lowest foot vertex during the walk...).
     """
     b = Bones(structures, positions, marks)
@@ -577,7 +578,8 @@ def build_rig(structures, positions, marks):
             for a in reversed(chain):
                 if a in per_joint:
                     world = qmul(world, per_joint[a])
-            q = qmul(world * [-1, -1, -1, 1], quat(joints[index[n]]["axes"][dof], mv.curves[mv.sagittal](t)))
+            angles[(n, dof)] = mv.curves[mv.sagittal](t)
+            q = qmul(world * [-1, -1, -1, 1], quat(joints[index[n]]["axes"][dof], angles[(n, dof)]))
             per_joint[n] = qmul(per_joint[n], q) if n in per_joint else q
         channels = []
         for side, track in patellas.items():
@@ -599,7 +601,7 @@ def build_rig(structures, positions, marks):
         channels.sort(key=lambda c: (c["joint"], c["path"] != "rotation"))
         anim = {"key": mv.key, "fr": mv.fr, "plane": mv.plane, "side": mv.side, "duration": mv.duration,
                 "joints": list(per_joint),
-                "channels": channels}
+                "channels": channels, "angles": angles}
         if mv.one_side and not any(n.endswith("-g") for n in per_joint):
             anim.update(fr=mv.one_side, side="right")
         if mv.grounded and feet:

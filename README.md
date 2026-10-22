@@ -32,7 +32,9 @@ abduction des épaules, marche simplifiée…), qui partent de la position anato
 (`pipeline/anatomo_models/rig.py`, [`docs/FORMAT.md`](docs/FORMAT.md#squelette-articulé-et-mouvements-rig-optionnel)).
 Depuis la 1.8.0, les muscles, vaisseaux, nerfs, organes et la peau suivent aussi les os (poids selon les os les
 plus proches). Avec three.js, ces maillages sont donc des `SkinnedMesh` : copier la scène avec
-`SkeletonUtils.clone`, pas `Object3D.clone`.
+`SkeletonUtils.clone`, pas `Object3D.clone`. Depuis la 1.9.0, les muscles moteurs de chaque mouvement gonflent en se
+contractant et leurs antagonistes s'amincissent (`_BULGE` et courbes `rig.movements[].muscles`,
+`pipeline/anatomo_models/contraction.py`).
 
 ## Construire
 
