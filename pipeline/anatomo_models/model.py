@@ -139,12 +139,15 @@ def build(structures, glb_path, manifest_path, model, version, sources, license=
                 mentries = [e for e in entries if e["system"] == "muscles"]
                 skin["muscles"] = muscle_curves(mentries, skin["animations"])
                 working = {i for groups in skin["muscles"].values() for g in groups for i in g["structures"]}
-                ranges = [tuple(e["vertices"]) for e in mentries if e["id"] in working]
-                if ranges:
-                    offsets = bulge(muscles["positions"], muscles["normals"], muscles["fiber"], muscles["tendon"], ranges)
-                    # Quantized on 127 steps of the widest offset (glb.py): a scale rounded up keeps them in range.
-                    scale = float(np.ceil(np.abs(offsets).max() * 1e5) / 1e5)
+                ranges = [(tuple(e["vertices"]), tuple(e["triangles"])) for e in mentries if e["id"] in working]
+                offsets = bulge(muscles["positions"], muscles["normals"], muscles["indices"], muscles["fiber"],
+                                muscles["tendon"], ranges)
+                # Quantized on 127 steps of the widest offset (glb.py): a scale rounded up keeps them in range.
+                scale = float(np.ceil(np.abs(offsets).max() * 1e5) / 1e5)
+                if scale > 0:
                     muscles["bulge"], muscles["bulge_scale"], skin["bulge_scale"] = offsets, scale, scale
+                else:
+                    skin.pop("muscles")
     write_glb(glb_path, primitives, copyright=attribution,
               extras={"format": FORMAT, "model": model, "version": version, "license": license}, rig=skin)
     manifest = {

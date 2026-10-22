@@ -13,6 +13,7 @@ the fibres' length and not at all on the tendons; a muscle keeps its ends, attac
 import re
 
 import numpy as np
+import trimesh
 
 from .rig import joint_name
 
@@ -22,7 +23,7 @@ from .rig import joint_name
 #  to the right (inclinaison) and turns to the left (rotation): `mirrored` swaps the role of the left side's muscles.
 LUMBAR = tuple(f"lombaire-{k}" for k in range(1, 6))
 NECK = tuple(f"cervicale-{k}" for k in range(2, 8))
-ERECTOR = [r"iliocostalis", r"longissimus thoracis", r"\bspinalis", r"multifidus"]
+ERECTOR = [r"iliocostalis (lumborum|thoracis)", r"longissimus thoracis", r"\bspinalis", r"multifidus"]
 HAMSTRINGS = [r"biceps femoris", r"semitendinosus", r"semimembranosus"]
 ACTIONS = [
     (("coude",), "flexion", 120, False,
@@ -32,8 +33,9 @@ ACTIONS = [
      [r"flexor carpi", r"palmaris longus", r"flexor digitorum superficialis", r"flexor digitorum profundus"],
      [r"extensor carpi", r"extensor digitorum$"]),
     (("epaule",), "abduction", 100, False, [r"acromial part of .*deltoid", r"supraspinatus"],
-     [r"latissimus dorsi", r"teres major", r"sternocostal part of .*pectoralis major"]),
+     [r"latissimus dorsi", r"teres major", r"(sternocostal|abdominal) part of .*pectoralis major"]),
     (("ceinture",), "elevation", 30, False,
+     # serratus anterior: upper_limb only (full_body has no such structure).
      [r"descending part of .*trapezius", r"levator scapulae", r"serratus anterior"], [r"pectoralis minor"]),
     (("epaule",), "flexion", 120, False,
      [r"clavicular part of .*deltoid", r"clavicular part of .*pectoralis major", r"coracobrachialis"],
@@ -61,11 +63,11 @@ ACTIONS = [
     # Turning the head to the left: the right sternocleidomastoid, the left splenius and inferior oblique.
     (NECK + ("atlas",), "rotation", 70, True, [r"sternocleidomastoid"], [r"splenius capitis", r"obliquus capitis inferior"]),
     (("mandibule",), "abaissement", 25, False,
-     [r"digastric", r"mylohyoid", r"geniohyoid", r"lateral pterygoid"], [r"masseter", r"temporalis$", r"medial pterygoid"]),
+     [r"digastric", r"mylohyoid", r"geniohyoid", r"lower head of .*lateral pterygoid"], [r"masseter", r"temporalis$", r"medial pterygoid"]),
 ]
 CONTRACT_STRETCH = 0.4  # contraction of a muscle lengthened by its full range (a fraction of the bulge, thinner)
 CONTRACT_MIN = 0.05  # a muscle whose contraction stays below this along a movement is left out of it
-BULGE = 0.6  # a fully contracted belly is this much thicker (fraction of its half thickness): readable on a phone
+BULGE = 0.6  # each surface of a fully contracted belly moves out by this fraction of the local half thickness
 
 
 def _side(en):
@@ -131,25 +133,51 @@ def muscle_curves(entries, animations):
     return out
 
 
-def bulge(positions, normals, fiber, tendon, ranges):
-    """(N, 3) offsets of the muscles mesh at contraction +1 for the structures of `ranges` [(first vertex, count)],
-    zero elsewhere. Along each muscle's mean fibre direction its belly swells most at the middle, its ends and tendons
-    stay; the swelling is BULGE times the muscle's half thickness (from its smallest spread)."""
+def _thickness(mesh):
+    """Thickness of a closed mesh at each vertex (m): the distance along the inward normal to the opposite surface,
+    then averaged over the vertex's neighbours. A vertex whose ray finds nothing takes the median."""
+    v, n = np.asarray(mesh.vertices, float), np.asarray(mesh.vertex_normals, float)
+    hit = np.full(len(v), np.nan)
+    locations, rays, _ = mesh.ray.intersects_location(v - n * 1e-5, -n, multiple_hits=False)
+    hit[rays] = np.linalg.norm(locations - v[rays], axis=1)
+    hit[hit < 1e-4] = np.nan
+    median = np.nanmedian(hit) if np.isfinite(hit).any() else 0.0
+    t = np.where(np.isfinite(hit), hit, median)
+    # A ray grazing a fold reaches far: never more than three times the median, then smoothed.
+    t = np.clip(t, 0, 3 * median)
+    edges = mesh.edges_unique
+    deg = np.bincount(edges.ravel(), minlength=len(v)).astype(float)
+    for _ in range(3):
+        acc = t.copy()
+        np.add.at(acc, edges[:, 0], t[edges[:, 1]])
+        np.add.at(acc, edges[:, 1], t[edges[:, 0]])
+        t = acc / (1 + deg)
+    return t
+
+
+def bulge(positions, normals, indices, fiber, tendon, structures):
+    """(N, 3) offsets of the muscles mesh at contraction +1 for `structures` [((first vertex, count), (first
+    triangle, count))], zero elsewhere. Along each muscle's mean fibre direction its belly swells most at the middle,
+    its ends and tendons stay; the swelling is BULGE times the local half thickness (measured at each vertex: a flat
+    sheet wrapped around the trunk swells by a fraction of its few millimetres, not of its curvature)."""
     out = np.zeros((len(positions), 3))
-    for v0, n in ranges:
-        p = np.asarray(positions[v0:v0 + n], float)
+    for (v0, n), (t0, tn) in structures:
         if n < 8:
             continue
+        p = np.asarray(positions[v0:v0 + n], float)
+        mesh = trimesh.Trimesh(p, np.asarray(indices[t0:t0 + tn]) - v0, process=False)
         centred = p - p.mean(0)
-        spread = np.linalg.eigvalsh(np.cov(centred.T))
-        half = 1.4 * np.sqrt(max(spread[0], 0))
+        # Never more than the muscle's half thickness as a whole (its smallest spread): an oblique ray through a
+        # round belly crosses more than its thickness.
+        whole = 1.4 * np.sqrt(max(np.linalg.eigvalsh(np.cov(centred.T))[0], 0))
+        half = np.minimum(0.5 * _thickness(mesh), whole)
         f = np.asarray(fiber[v0:v0 + n], float) if fiber is not None else None
         if f is not None and np.isfinite(f).all() and np.abs(f).sum() > 0:
             axis = np.linalg.eigh(f.T @ f)[1][:, -1]
         else:
             axis = np.linalg.eigh(centred.T @ centred)[1][:, -1]
-        s = centred @ axis
-        t = (s - s.min()) / max(s.max() - s.min(), 1e-9)
+        s_ = centred @ axis
+        t = (s_ - s_.min()) / max(s_.max() - s_.min(), 1e-9)
         profile = np.sin(np.pi * t) ** 1.5
         if tendon is not None:
             profile = profile * (1 - np.asarray(tendon[v0:v0 + n], float))

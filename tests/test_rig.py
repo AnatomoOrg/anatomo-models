@@ -519,9 +519,10 @@ def test_working_muscles_swell(tmp_path):
         q, o, nn = p[v0:v0 + k], off[v0:v0 + k], n[v0:v0 + k]
         mid = np.abs(q[:, 1] - (top[1] + low[1]) / 2) < 0.01
         ends = (q[:, 1] > top[1] - 0.003) | (q[:, 1] < low[1] + 0.003)
-        # Outwards along the normals, some 30 % of the radius at the middle of the belly, nothing at the ends.
-        assert np.all(np.einsum("ij,ij->i", o[mid], nn[mid]) > 0.7 * contraction.BULGE * 0.012)
-        assert np.abs(o[mid]).max() < 0.012 * contraction.BULGE * 1.5
+        # Outwards along the normals, some 60 % of the radius (the half thickness) at the middle of the belly, nothing
+        # at the ends.
+        assert np.all(np.einsum("ij,ij->i", o[mid], nn[mid]) > 0.8 * contraction.BULGE * 0.012)
+        assert np.abs(o[mid]).max() < 0.012 * contraction.BULGE * 1.1
         assert np.abs(o[ends]).max() < 0.0015
     # A muscle that works in no movement does not swell.
     v0, k = by_id["FMA912"]["vertices"]
@@ -554,3 +555,14 @@ def test_contraction_names_do_not_overlap():
     assert actions_of("right semispinalis thoracis") == [] and actions_of("right interspinalis thoracis") == []
     assert actions_of("right spinalis thoracis")
     assert actions_of("right temporoparietalis") == [] and actions_of("right temporalis")
+
+
+def test_a_thin_sheet_swells_by_its_thickness_not_its_curvature():
+    from anatomo_models.contraction import BULGE, bulge
+    # A closed sheet 3 mm thick wrapped on a 15 cm radius, 20 cm high (an abdominal muscle around the trunk).
+    sheet = trimesh.creation.annulus(r_min=0.147, r_max=0.15, height=0.2, sections=96)
+    sheet = trimesh.Trimesh(*trimesh.remesh.subdivide_to_size(sheet.vertices, sheet.faces, max_edge=0.006))
+    v, n = np.asarray(sheet.vertices), np.asarray(sheet.vertex_normals)
+    size = np.linalg.norm(bulge(v, n, sheet.faces, None, None, [((0, len(v)), (0, len(sheet.faces)))]), axis=1)
+    # A fraction of its 1.5 mm half thickness, not of its curvature (centimetres).
+    assert 0.5 * BULGE * 0.0015 < size.max() < 1.3 * BULGE * 0.0015

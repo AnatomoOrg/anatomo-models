@@ -224,7 +224,7 @@ de ses actions ; il n'est étiré que s'il ne produit rien.
 
 La forme contractée est l'attribut `_BULGE` du maillage `muscles` : à ajouter à la position **avant** la peau,
 multiplié par la contraction (`position + _BULGE × rig.bulge.scale × contraction`). Le ventre du muscle gonfle le long
-des normales, au plus au milieu de la longueur de ses fibres (60 % de sa demi-épaisseur, accentué pour se lire sur un téléphone), pas du tout aux extrémités ni
+des normales, au plus au milieu de la longueur de ses fibres (chaque face s'écarte de 60 % de la demi-épaisseur mesurée en ce sommet, accentué pour se lire sur un téléphone ; une nappe mince comme les obliques gonfle de quelques dixièmes de millimètre, pas de sa courbure), pas du tout aux extrémités ni
 sur les tendons (`_TENDON`) : le muscle garde ses attaches. Un lecteur qui ignore `_BULGE` voit les muscles suivre les
 os sans gonfler, comme en 1.8.0. Coût : 4 octets par sommet du maillage `muscles` : `full_body` 67,7 → 69,0 Mo,
 `upper_limb` 23,0 → 23,8 Mo.
@@ -288,7 +288,7 @@ sans les supposer identiques d'un modèle à l'autre.
          {"structures": ["FMA37670", "FMA37689"], "values": [0, 0.01, 0.02, "…", 0]}
        ]}
     ],
-    "bulge": {"node": "muscles", "scale": 0.00512}  // 1.9.0 : `_BULGE` × scale = mètres
+    "bulge": {"node": "muscles", "scale": 0.0087}  // 1.9.0 : `_BULGE` × scale = mètres (de l'ordre du centimètre)
   }
 }
 ```

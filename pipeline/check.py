@@ -10,6 +10,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from anatomo_models.contraction import CONTRACT_STRETCH  # noqa: E402
 from anatomo_models.glb import read_glb  # noqa: E402
 from anatomo_models.junctions import JUNCTIONS, MAX_GAP, mesh_distance  # noqa: E402
 from anatomo_models.landmarks import KINDS  # noqa: E402
@@ -151,8 +152,9 @@ def check_muscles(m, nodes):
         seen = set()
         for g in mv.get("muscles", []):
             v = np.asarray(g["values"], float)
-            assert len(v) >= 2 and v[0] == 0 and v[-1] == 0, f"{mv['key']}: a contraction does not start and end at rest"
-            assert v.min() >= -1 and v.max() <= 1, mv["key"]
+            assert len(v) == round(mv["duration"] * 24) + 1, f"{mv['key']}: not 24 contraction values per second"
+            assert v[0] == 0 and v[-1] == 0, f"{mv['key']}: a contraction does not start and end at rest"
+            assert v.min() >= -CONTRACT_STRETCH - 1e-9 and v.max() <= 1, mv["key"]
             for sid in g["structures"]:
                 assert by_id[sid]["system"] == "muscles" and sid not in seen, f"{mv['key']}: {sid}"
                 seen.add(sid)
@@ -161,12 +163,17 @@ def check_muscles(m, nodes):
         assert not worked, "contraction curves without a bulge"
         return 0
     assert rig["bulge"]["node"] == "muscles" and rig["bulge"]["scale"] > 0
+    assert "_BULGE" in nodes["muscles"], "rig.bulge but the muscles mesh has no _BULGE attribute"
     off = np.linalg.norm(nodes["muscles"]["_BULGE"], axis=1)
+    swelling = 0
     for s in m["structures"]:
         if s["system"] == "muscles":
             v0, vn = s["vertices"]
             swells = off[v0:v0 + vn].max() > 0
-            assert swells == (s["id"] in worked) or (s["id"] in worked and vn < 8), f"bulge of {s['id']}"
+            assert swells <= (s["id"] in worked), f"{s['id']} swells but works in no movement"
+            swelling += swells
+    # A working muscle may round to no offset (a tiny one, under a quantization step), not most of them.
+    assert swelling >= 0.9 * len(worked), f"only {swelling} of the {len(worked)} working muscles swell"
     return len(worked)
 
 
